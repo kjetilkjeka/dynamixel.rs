@@ -1,0 +1,6 @@
+[package]
+name = "dynamixel"
+version = "0.0.0"
+authors = ["Kjetil Kjeka <kjetilkjeka@gmail.com>"]
+
+[dependencies]
