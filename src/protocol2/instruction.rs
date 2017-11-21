@@ -1,11 +1,14 @@
 use protocol2::{
     Register,
+    PacketID,
     ReadRegister,
     WriteRegister,
     Instruction,
 };
 
-pub struct Ping ();
+pub struct Ping {
+    id: PacketID,
+}
 
 impl Instruction for Ping {
     type Array = [u8; 10];
@@ -15,6 +18,7 @@ impl Instruction for Ping {
 }
 
 pub struct Read<T: ReadRegister> {
+    id: PacketID,
     data: T,
 }
 
@@ -26,6 +30,7 @@ impl<T: ReadRegister> Instruction for Read<T> {
 }
 
 pub struct Write<T: WriteRegister> {
+    id: PacketID,
     data: T,
 }
 
@@ -38,7 +43,9 @@ impl<T: WriteRegister> Instruction for Write<T>{
     fn serialize(&self) -> Self::Array {unimplemented!()}
 }
 
-pub struct FactoryReset();
+pub struct FactoryReset {
+    id: PacketID,
+}
 
 impl Instruction for FactoryReset {
     type Array = [u8; 11];
@@ -47,7 +54,9 @@ impl Instruction for FactoryReset {
     fn serialize(&self) -> Self::Array {unimplemented!()}
 }
 
-pub struct Reboot();
+pub struct Reboot {
+    id: PacketID,
+}
 
 impl Instruction for Reboot {
     type Array = [u8; 10];
