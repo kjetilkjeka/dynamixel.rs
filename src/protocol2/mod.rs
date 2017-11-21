@@ -16,9 +16,11 @@ pub trait Instruction {
     const LENGTH: u16;
     const INSTRUCTION_VALUE: u8;
 
-    fn serialize(&self) -> Self::Array { unimplemented!()}
+    // Serialize can be implemented generically once const generics land
+    fn serialize(&self) -> Self::Array { unimplemented!() }
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct PacketID(u8);
 
 impl PacketID {
