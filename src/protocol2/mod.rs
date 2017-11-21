@@ -9,10 +9,13 @@ pub trait ReadRegister : Register {}
 pub trait WriteRegister : Register {}
 
 pub trait Instruction {
+    // The array type is no longer needed when const generics land
+    // replace with [u8; Self::LENGTH]
     type Array;
+    const LENGTH: u16;
     const INSTRUCTION_VALUE: u8;
 
-    fn serialize(&self) -> Self::Array;
+    fn serialize(&self) -> Self::Array { unimplemented!()}
 }
 
 pub struct PacketID(u8);

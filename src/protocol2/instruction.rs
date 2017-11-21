@@ -12,9 +12,8 @@ pub struct Ping {
 
 impl Instruction for Ping {
     type Array = [u8; 10];
+    const LENGTH: u16 = 10;
     const INSTRUCTION_VALUE: u8 = 0x01;
-
-    fn serialize(&self) -> Self::Array {unimplemented!()}
 }
 
 pub struct Read<T: ReadRegister> {
@@ -24,9 +23,8 @@ pub struct Read<T: ReadRegister> {
 
 impl<T: ReadRegister> Instruction for Read<T> {
     type Array = [u8; 14];
+    const LENGTH: u16 = 14;
     const INSTRUCTION_VALUE: u8 = 0x02;
-
-    fn serialize(&self) -> Self::Array {unimplemented!()}
 }
 
 pub struct Write<T: WriteRegister> {
@@ -35,12 +33,10 @@ pub struct Write<T: WriteRegister> {
 }
 
 impl<T: WriteRegister> Instruction for Write<T>{
-    // Untill const generics land, use 4 bytes
-    //type Array = [u8; 12 + T::Sized];
-    type Array = [u8; 12 + 4];
+    // Use max size (4) untill const generics land
+    type Array = [u8; 16];
+    const LENGTH: u16 = 12 + T::SIZE;
     const INSTRUCTION_VALUE: u8 = 0x03;
-
-    fn serialize(&self) -> Self::Array {unimplemented!()}
 }
 
 pub struct FactoryReset {
@@ -49,9 +45,8 @@ pub struct FactoryReset {
 
 impl Instruction for FactoryReset {
     type Array = [u8; 11];
+    const LENGTH: u16 = 11;
     const INSTRUCTION_VALUE: u8 = 0x06;
-
-    fn serialize(&self) -> Self::Array {unimplemented!()}
 }
 
 pub struct Reboot {
