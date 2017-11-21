@@ -5,6 +5,7 @@ use protocol2::{
     ReadRegister,
     WriteRegister,
     Instruction,
+    Response,
 };
 
 pub struct Ping {
@@ -28,6 +29,26 @@ impl Instruction for Ping {
         array[8] = crc as u8;
         array[9] = (crc >> 8) as u8;
         array
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Pong {
+    id: PacketID,
+    model_number: u16,
+    fw_version: u8,
+}
+
+impl Response for Pong {
+    type Array = [u8; 14];
+    const LENGTH: u16 = 7;
+
+    fn deserialize(data: Self::Array) -> Result<Pong, ()> {
+        Ok(Pong {
+            id: PacketID::unicast(data[4]),
+            model_number: (data[9] as u16) | (data[10] as u16) << 8,
+            fw_version: data[11],
+        })
     }
 }
 
@@ -86,5 +107,16 @@ mod tests {
     fn test_ping() {
         assert_eq!(Ping::new(PacketID::unicast(1)).serialize(), [0xff, 0xff, 0xfd, 0x00, 0x01, 0x03, 0x00, 0x01, 0x19, 0x4e]);
         assert_eq!(Ping::new(PacketID::broadcast()).serialize(), [0xff, 0xff, 0xfd, 0x00, 0xfe, 0x03, 0x00, 0x01, 0x31, 0x42]);
+    }
+    
+    #[test]
+    fn test_pong() {
+        assert_eq!(Pong::deserialize([0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x55, 0x00, 0x06, 0x04, 0x026, 0x65, 0x5d]),
+                   Ok(Pong{
+                       id: PacketID::unicast(1),
+                       model_number: 0x0406,
+                       fw_version: 0x26,
+                   })
+        );
     }
 }

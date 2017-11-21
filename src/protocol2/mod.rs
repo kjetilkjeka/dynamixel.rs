@@ -20,6 +20,18 @@ pub trait Instruction {
     fn serialize(&self) -> Self::Array { unimplemented!() }
 }
 
+pub trait Response {
+    // The array type is no longer needed when const generics land
+    // replace with [u8; Self::LENGTH]
+    type Array;
+    const LENGTH: u16;
+    
+    fn deserialize(Self::Array) -> Result<Self, ()>
+        where Self : Sized {
+        unimplemented!()
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct PacketID(u8);
 
