@@ -1,4 +1,5 @@
 pub mod instruction;
+mod crc;
 
 pub trait Register {
     const SIZE: u16;
