@@ -68,11 +68,31 @@ pub struct Write<T: WriteRegister> {
     data: T,
 }
 
+impl<T: WriteRegister> Write<T> {
+    pub fn new(id: PacketID, data: T) -> Self {
+        Write{id: id, data: data}
+    }
+}
+
 impl<T: WriteRegister> Instruction for Write<T>{
     // Use max size (4) untill const generics land
     type Array = [u8; 16];
-    const LENGTH: u16 = 12 + T::SIZE;
+    const LENGTH: u16 = 5 + T::SIZE;
     const INSTRUCTION_VALUE: u8 = 0x03;
+
+    fn serialize(&self) -> [u8; 16] {
+        let mut array = [0xff, 0xff, 0xfd, 0x00, u8::from(self.id), Self::LENGTH as u8, (Self::LENGTH >> 8) as u8, Self::INSTRUCTION_VALUE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        array[8] = T::ADDRESS as u8;
+        array[9] = (T::ADDRESS >> 8) as u8;
+        let data = self.data.serialize();
+        for i in 0..T::SIZE as usize {
+            array[10+i] = data[i];
+        }
+        let crc = u16::from(protocol2::crc::CRC::calc(&array[0..(10+T::SIZE) as usize]));
+        array[10+T::SIZE as usize] = crc as u8;
+        array[11+T::SIZE as usize] = (crc >> 8) as u8;
+        array
+    }
 }
 
 pub struct FactoryReset {
@@ -117,6 +137,14 @@ mod tests {
                        model_number: 0x0406,
                        fw_version: 0x26,
                    })
+        );
+    }
+    
+    #[test]
+    fn test_write() {
+        assert_eq!(
+            Write::new(PacketID::unicast(1), ::pro::control_table::GoalPosition::new(0xabcd)).serialize(),
+            [0xff, 0xff, 0xfd, 0x00, 0x01, 0x09, 0x00, 0x03, 0x54, 0x02, 0xcd, 0xab, 0x00, 0x00, 0x0d, 0xe5]
         );
     }
 }

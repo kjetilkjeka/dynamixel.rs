@@ -6,8 +6,13 @@ pub trait Register {
     const ADDRESS: u16;
 }
     
-pub trait ReadRegister : Register {}
-pub trait WriteRegister : Register {}
+pub trait ReadRegister : Register {
+    fn deserialize([u8; 4]) -> Self;
+}
+
+pub trait WriteRegister : Register {
+    fn serialize(&self) -> [u8; 4];
+}
 
 pub trait Instruction {
     // The array type is no longer needed when const generics land
