@@ -52,10 +52,10 @@ impl ::protocol2::WriteRegister for LedRed {
     }    
 }
 
-pub struct GoalPosition(u32);
+pub struct GoalPosition(i32);
 
 impl GoalPosition {
-    pub fn new(v: u32) -> Self {
+    pub fn new(v: i32) -> Self {
         GoalPosition(v)
     }
 }
@@ -67,7 +67,7 @@ impl ::protocol2::Register for GoalPosition {
 
 impl ::protocol2::ReadRegister for GoalPosition {
     fn deserialize(data: [u8; 4]) -> Self {
-        GoalPosition(data[0] as u32 | (data[1] as u32) << 8 | (data[2] as u32) << 16 | (data[3] as u32) << 24)
+        GoalPosition((data[0] as u32 | (data[1] as u32) << 8 | (data[2] as u32) << 16 | (data[3] as u32) << 24) as i32)
     }
 }
 
