@@ -1,5 +1,11 @@
 pub struct TorqueEnable(bool);
 
+impl TorqueEnable {
+    pub fn new(v: bool) -> Self {
+        TorqueEnable(v)
+    }
+}
+
 impl ::protocol2::Register for TorqueEnable {
     const SIZE: u16 = 1;
     const ADDRESS: u16 = 562;
@@ -22,6 +28,12 @@ impl ::protocol2::WriteRegister for TorqueEnable {
 }
 
 pub struct LedRed(u8);
+
+impl LedRed {
+    pub fn new(v: u8) -> Self {
+        LedRed(v)
+    }
+}
 
 impl ::protocol2::Register for LedRed {
     const SIZE: u16 = 1;
