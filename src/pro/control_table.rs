@@ -1,81 +1,13 @@
-pub struct TorqueEnable(bool);
+#[macro_use]
+use control_table;
 
-impl TorqueEnable {
-    pub fn new(v: bool) -> Self {
-        TorqueEnable(v)
-    }
-}
+pub trait Register: ::protocol2::Register {}
+pub trait ReadRegister: ::protocol2::ReadRegister {}
+pub trait WriteRegister: ::protocol2::WriteRegister {}
 
-impl ::protocol2::Register for TorqueEnable {
-    const SIZE: u16 = 1;
-    const ADDRESS: u16 = 562;
-}
-
-impl ::protocol2::ReadRegister for TorqueEnable {
-    fn deserialize(data: [u8; 4]) -> Self {
-        TorqueEnable(data[0]&1 == 1)
-    }
-}
-
-impl ::protocol2::WriteRegister for TorqueEnable {
-    fn serialize(&self) -> [u8; 4] {
-        if self.0 {
-            [1, 0, 0, 0]
-        } else {
-            [0, 0, 0, 0]
-        }
-    }    
-}
-
-pub struct LedRed(u8);
-
-impl LedRed {
-    pub fn new(v: u8) -> Self {
-        LedRed(v)
-    }
-}
-
-impl ::protocol2::Register for LedRed {
-    const SIZE: u16 = 1;
-    const ADDRESS: u16 = 563;
-}
-
-impl ::protocol2::ReadRegister for LedRed {
-    fn deserialize(data: [u8; 4]) -> Self {
-        LedRed(data[0])
-    }
-}
-
-impl ::protocol2::WriteRegister for LedRed {
-    fn serialize(&self) -> [u8; 4] {
-        [self.0 as u8, 0, 0, 0]
-    }    
-}
-
-pub struct GoalPosition(i32);
-
-impl GoalPosition {
-    pub fn new(v: i32) -> Self {
-        GoalPosition(v)
-    }
-}
-
-impl ::protocol2::Register for GoalPosition {
-    const SIZE: u16 = 4;
-    const ADDRESS: u16 = 596;
-}
-
-impl ::protocol2::ReadRegister for GoalPosition {
-    fn deserialize(data: [u8; 4]) -> Self {
-        GoalPosition((data[0] as u32 | (data[1] as u32) << 8 | (data[2] as u32) << 16 | (data[3] as u32) << 24) as i32)
-    }
-}
-
-impl ::protocol2::WriteRegister for GoalPosition {
-    fn serialize(&self) -> [u8; 4] {
-        [self.0 as u8, (self.0 >> 8) as u8, (self.0 >> 16) as u8, (self.0 >> 24) as u8]
-    }    
-}
+rw_reg!(TorqueEnable, bool, 562);
+rw_reg!(LedRed, u8, 563);
+rw_reg!(GoalPosition, i32, 596);
 
 
 
