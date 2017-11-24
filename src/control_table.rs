@@ -31,6 +31,14 @@ macro_rules! register_impl{
             const ADDRESS: u16 = $address;
         }
     };
+    ($name:ident, i16, $address:expr) => {
+        pub struct $name(i16);
+        
+        impl ::protocol2::Register for $name {
+            const SIZE: u16 = 2;
+            const ADDRESS: u16 = $address;
+        }
+    };
     ($name:ident, i32, $address:expr) => {
         pub struct $name(i32);
         
@@ -67,6 +75,15 @@ macro_rules! read_register_impl{
         impl ::protocol2::ReadRegister for $name {
             fn deserialize(data: [u8; 4]) -> Self {
                 $name(data[0] as i8)
+            }
+        }
+    };
+    ($name:ident, i16) => {
+        impl ReadRegister for $name {}
+        
+        impl ::protocol2::ReadRegister for $name {
+            fn deserialize(data: [u8; 4]) -> Self {
+                $name(data[0] as i16 | ((data[1] as u16) << 8) as i16)
             }
         }
     };
@@ -115,6 +132,15 @@ macro_rules! write_register_impl{
         impl ::protocol2::WriteRegister for $name {
             fn serialize(&self) -> [u8; 4] {
                 [self.0 as u8, 0, 0, 0]
+            }    
+        }
+    };
+    ($name:ident, i16) => {
+        impl WriteRegister for $name {}
+        
+        impl ::protocol2::WriteRegister for $name {
+            fn serialize(&self) -> [u8; 4] {
+                [self.0 as u8, (self.0 >> 8) as u8, 0, 0]
             }    
         }
     };
