@@ -78,6 +78,7 @@ pub enum Error {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FormatError {
+    Timeout,
     ID,
     Header,
     CRC,
