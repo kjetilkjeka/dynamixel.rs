@@ -4,6 +4,7 @@ version = "0.0.0"
 authors = ["Kjetil Kjeka <kjetilkjeka@gmail.com>"]
 
 [dependencies]
+embedded_types = "0.3.2"
 
 [features]
 default = []

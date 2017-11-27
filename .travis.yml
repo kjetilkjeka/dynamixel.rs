@@ -2,3 +2,9 @@ language: rust
 rust:
   - stable
   - nightly
+
+env:
+  - FLAGS=""
+  - FLAGS="--features std"
+
+script: cargo test $FLAGS
