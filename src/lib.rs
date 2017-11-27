@@ -5,6 +5,7 @@ extern crate embedded_types;
 #[macro_use]
 mod control_table;
 
+#[macro_use]
 pub mod protocol2;
 pub mod pro;
 

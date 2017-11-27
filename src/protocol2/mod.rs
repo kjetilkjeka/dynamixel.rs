@@ -3,26 +3,38 @@ mod crc;
 
 use Interface;
 
-pub trait Servo<T: Interface> {
-    fn interface(&mut self) -> &mut T;
-    
-    fn ping(&mut self, id: PacketID) -> Result<instruction::Pong, Error> {
-        let ping = instruction::Ping::new(id);
-        self.interface().write(&ping.serialize());
-        let mut received_data = [0u8; 14];
-        // TODO: timeout checking
-        self.interface().read(&mut received_data);
-        instruction::Pong::deserialize(received_data)
-    }
+macro_rules! protocol2_servo {
+    ($name:ident, $write:path, $read:path) => {
+        pub struct $name<T: ::Interface> {
+            interface: T,
+        }
 
-    fn write<W: WriteRegister>(&mut self, id: PacketID, register: W) -> Result<instruction::WriteResponse, Error> {
-        let write = instruction::Write::new(id, register);
-        self.interface().write(&write.serialize()[0..instruction::Write::<W>::LENGTH as usize + 7]);
-        let mut received_data = [0u8; 11];
-        // TODO: timeout checking
-        self.interface().read(&mut received_data);
-        instruction::WriteResponse::deserialize(received_data)
-    }
+        impl<T: ::Interface> $name<T> {
+            pub fn new(interface: T) -> Self {
+                $name{
+                    interface: interface,
+                }
+            }
+            
+            pub fn ping(&mut self, id: ::protocol2::PacketID) -> Result<::protocol2::instruction::Pong, ::protocol2::Error> {
+                let ping = ::protocol2::instruction::Ping::new(id);
+                self.interface.write(&::protocol2::Instruction::serialize(&ping));
+                let mut received_data = [0u8; 14];
+                // TODO: timeout checking
+                self.interface.read(&mut received_data);
+                <::protocol2::instruction::Pong as ::protocol2::Status>::deserialize(received_data)
+            }
+            
+            pub fn write<W: $write>(&mut self, id: ::protocol2::PacketID, register: W) -> Result<::protocol2::instruction::WriteResponse, ::protocol2::Error> {
+                let write = ::protocol2::instruction::Write::new(id, register);
+                self.interface.write(&::protocol2::Instruction::serialize(&write)[0..<::protocol2::instruction::Write<W> as ::protocol2::Instruction>::LENGTH as usize + 7]);
+                let mut received_data = [0u8; 11];
+                // TODO: timeout checking
+                self.interface.read(&mut received_data);
+                <::protocol2::instruction::WriteResponse as ::protocol2::Status>::deserialize(received_data)
+            }
+        }
+    };
 }
 
 pub trait Register {
