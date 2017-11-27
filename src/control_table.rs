@@ -14,6 +14,13 @@ macro_rules! rw_reg{
     };
 }
 
+macro_rules! r_reg{
+    ($name:ident, $type:ident, $address:expr) => {
+        register_impl!($name, $type, $address);
+        read_register_impl!($name, $type);
+    };
+}
+
 macro_rules! register_impl{
     ($name:ident, bool, $address:expr) => {
         pub struct $name(bool);
