@@ -3,27 +3,24 @@ mod crc;
 
 use Interface;
 
-pub trait Servo {
-    // Control table defs
-    type Register: Register;
-    type ReadRegister: ReadRegister;
-    type WriteRegister: WriteRegister;
-
-    fn ping<T: Interface>(interface: &mut T, id: PacketID) -> Result<instruction::Pong, Error> {
+pub trait Servo<T: Interface> {
+    fn interface(&mut self) -> &mut T;
+    
+    fn ping(&mut self, id: PacketID) -> Result<instruction::Pong, Error> {
         let ping = instruction::Ping::new(id);
-        interface.write(&ping.serialize());
+        self.interface().write(&ping.serialize());
         let mut received_data = [0u8; 14];
         // TODO: timeout checking
-        interface.read(&mut received_data);
+        self.interface().read(&mut received_data);
         instruction::Pong::deserialize(received_data)
     }
 
-    fn write<T: Interface, W: WriteRegister>(interface: &mut T, id: PacketID, register: W) -> Result<instruction::WriteResponse, Error> {
+    fn write<W: WriteRegister>(&mut self, id: PacketID, register: W) -> Result<instruction::WriteResponse, Error> {
         let write = instruction::Write::new(id, register);
-        interface.write(&write.serialize()[0..instruction::Write::<W>::LENGTH as usize + 7]);
+        self.interface().write(&write.serialize()[0..instruction::Write::<W>::LENGTH as usize + 7]);
         let mut received_data = [0u8; 11];
         // TODO: timeout checking
-        interface.read(&mut received_data);
+        self.interface().read(&mut received_data);
         instruction::WriteResponse::deserialize(received_data)
     }
 }
