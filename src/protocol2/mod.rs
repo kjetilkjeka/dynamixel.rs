@@ -30,17 +30,26 @@ pub trait Status {
     // replace with [u8; Self::LENGTH]
     type Array;
     const LENGTH: u16;
-    
-    fn deserialize(Self::Array) -> Result<Self, ()>
-        where Self : Sized {
-        unimplemented!()
-    }
-    
-    fn error(&self) -> Option<Error>;
+
+    fn deserialize(data: Self::Array) -> Result<Self, Error> where Self: Sized;
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
+    Format(FormatError),
+    Processing(ProcessingError),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum FormatError {
+    ID,
+    Header,
+    CRC,
+    Length,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ProcessingError {
     ResultFail = 0x01,
     InstructionError = 0x02,
     CRCError = 0x03,
@@ -50,23 +59,23 @@ pub enum Error {
     AccessError = 0x07,
 }
 
-impl Error {
-    fn decode(e: u8) -> Option<Error> {
+impl ProcessingError {
+    fn decode(e: u8) -> Option<ProcessingError> {
         match e {
-            0x01 => Some(Error::ResultFail),
-            0x02 => Some(Error::InstructionError),
-            0x03 => Some(Error::CRCError),
-            0x04 => Some(Error::DataRangeError),
-            0x05 => Some(Error::DataLengthError),
-            0x06 => Some(Error::DataLimitError),
-            0x07 => Some(Error::AccessError),
+            0x01 => Some(ProcessingError::ResultFail),
+            0x02 => Some(ProcessingError::InstructionError),
+            0x03 => Some(ProcessingError::CRCError),
+            0x04 => Some(ProcessingError::DataRangeError),
+            0x05 => Some(ProcessingError::DataLengthError),
+            0x06 => Some(ProcessingError::DataLimitError),
+            0x07 => Some(ProcessingError::AccessError),
             _ => None,
         }
     }
 }
 
-impl From<Error> for u8 {
-    fn from(e: Error) -> u8 {
+impl From<ProcessingError> for u8 {
+    fn from(e: ProcessingError) -> u8 {
         e as u8
     }
 }

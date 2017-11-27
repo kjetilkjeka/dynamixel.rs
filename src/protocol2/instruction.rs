@@ -1,13 +1,4 @@
-use protocol2::{
-    self,
-    Register,
-    PacketID,
-    ReadRegister,
-    WriteRegister,
-    Instruction,
-    Status,
-    Error,
-};
+use protocol2::*;
 
 pub struct Ping {
     id: PacketID,
@@ -26,7 +17,7 @@ impl Instruction for Ping {
 
     fn serialize(&self) -> [u8; 10] {
         let mut array = [0xff, 0xff, 0xfd, 0x00, u8::from(self.id), Self::LENGTH as u8, (Self::LENGTH >> 8) as u8, Self::INSTRUCTION_VALUE, 0x00, 0x00];
-        let crc = u16::from(protocol2::crc::CRC::calc(&array[0..8]));
+        let crc = u16::from(crc::CRC::calc(&array[0..8]));
         array[8] = crc as u8;
         array[9] = (crc >> 8) as u8;
         array
@@ -35,8 +26,6 @@ impl Instruction for Ping {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Pong {
-    error: Option<Error>,
-    id: PacketID,
     model_number: u16,
     fw_version: u8,
 }
@@ -45,17 +34,19 @@ impl Status for Pong {
     type Array = [u8; 14];
     const LENGTH: u16 = 7;
 
-    fn deserialize(data: Self::Array) -> Result<Pong, ()> {
-        Ok(Pong {
-            id: PacketID::unicast(data[4]),
+    fn deserialize(data: Self::Array) -> Result<Self, Error>
+        where Self : Sized {
+        // check for formating error stuff
+        
+        // check for processing errors
+        if let Some(error) = ProcessingError::decode(data[8]) {
+            return Err(Error::Processing(error));
+        }
+        
+        Ok( Pong {
             model_number: (data[9] as u16) | (data[10] as u16) << 8,
             fw_version: data[11],
-            error: Error::decode(data[8]),
-        })
-    }
-
-    fn error(&self) -> Option<Error> {
-        self.error
+        } )
     }
 }
 
@@ -95,7 +86,7 @@ impl<T: WriteRegister> Instruction for Write<T>{
         for i in 0..T::SIZE as usize {
             array[10+i] = data[i];
         }
-        let crc = u16::from(protocol2::crc::CRC::calc(&array[0..(10+T::SIZE) as usize]));
+        let crc = u16::from(crc::CRC::calc(&array[0..(10+T::SIZE) as usize]));
         array[10+T::SIZE as usize] = crc as u8;
         array[11+T::SIZE as usize] = (crc >> 8) as u8;
         array
@@ -103,23 +94,23 @@ impl<T: WriteRegister> Instruction for Write<T>{
 }
 
 pub struct WriteResponse {
-    id: PacketID,
-    error: Option<Error>,
 }
 
 impl Status for WriteResponse {
     type Array = [u8; 11];
     const LENGTH: u16 = 4;
     
-    fn deserialize(data: Self::Array) -> Result<Self, ()> {
-        Ok( WriteResponse{
-            id: PacketID::unicast(data[4]),
-            error: Error::decode(data[8]),
-        })
-    }
-    
-    fn error(&self) -> Option<Error> {
-        self.error
+    fn deserialize(data: Self::Array) -> Result<Self, Error>
+        where Self : Sized {
+        // check for formating error stuff
+        
+        // check for processing errors
+        if let Some(error) = ProcessingError::decode(data[8]) {
+            return Err(Error::Processing(error));
+        }
+        
+        Ok( WriteResponse {
+        } )
     }
 }
 
@@ -161,10 +152,8 @@ mod tests {
     fn test_pong() {
         assert_eq!(Pong::deserialize([0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x55, 0x00, 0x06, 0x04, 0x026, 0x65, 0x5d]),
                    Ok(Pong{
-                       id: PacketID::unicast(1),
                        model_number: 0x0406,
                        fw_version: 0x26,
-                       error: None,
                    })
         );
     }
