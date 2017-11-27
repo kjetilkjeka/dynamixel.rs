@@ -8,11 +8,21 @@ mod control_table;
 pub mod protocol2;
 pub mod pro;
 
-#[cfg(not(feature = "std"))]
-pub trait Interface : ::embedded_types::io::Read + ::embedded_types::io::Write {}
+pub trait Interface {
+    fn read(&mut self, &mut [u8]);
+    fn write(&mut self, &[u8]);
+}
 
 #[cfg(feature = "std")]
-pub trait Interface : ::std::io::BufRead + ::std::io::Write {}
+impl<T: ::std::io::Read + ::std::io::Write> Interface for T {
+    fn read(&mut self, buf: &mut [u8]) {
+        self.read_exact(buf).unwrap();
+    }
+    
+    fn write(&mut self, data: &[u8]) {
+        self.write(data).unwrap();
+    }
+}
 
 #[cfg(test)]
 mod tests {
