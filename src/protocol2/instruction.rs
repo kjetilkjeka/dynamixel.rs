@@ -6,6 +6,7 @@ use protocol2::{
     WriteRegister,
     Instruction,
     Status,
+    Error,
 };
 
 pub struct Ping {
@@ -34,6 +35,7 @@ impl Instruction for Ping {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Pong {
+    error: Option<Error>,
     id: PacketID,
     model_number: u16,
     fw_version: u8,
@@ -48,7 +50,12 @@ impl Status for Pong {
             id: PacketID::unicast(data[4]),
             model_number: (data[9] as u16) | (data[10] as u16) << 8,
             fw_version: data[11],
+            error: Error::decode(data[8]),
         })
+    }
+
+    fn error(&self) -> Option<Error> {
+        self.error
     }
 }
 
@@ -136,6 +143,7 @@ mod tests {
                        id: PacketID::unicast(1),
                        model_number: 0x0406,
                        fw_version: 0x26,
+                       error: None,
                    })
         );
     }

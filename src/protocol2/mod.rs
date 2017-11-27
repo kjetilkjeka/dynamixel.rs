@@ -35,6 +35,8 @@ pub trait Status {
         where Self : Sized {
         unimplemented!()
     }
+    
+    fn error(&self) -> Option<Error>;
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
