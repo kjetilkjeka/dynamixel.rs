@@ -25,7 +25,7 @@ pub trait Instruction {
     fn serialize(&self) -> Self::Array { unimplemented!() }
 }
 
-pub trait Response {
+pub trait Status {
     // The array type is no longer needed when const generics land
     // replace with [u8; Self::LENGTH]
     type Array;

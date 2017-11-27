@@ -5,7 +5,7 @@ use protocol2::{
     ReadRegister,
     WriteRegister,
     Instruction,
-    Response,
+    Status,
 };
 
 pub struct Ping {
@@ -39,7 +39,7 @@ pub struct Pong {
     fw_version: u8,
 }
 
-impl Response for Pong {
+impl Status for Pong {
     type Array = [u8; 14];
     const LENGTH: u16 = 7;
 
