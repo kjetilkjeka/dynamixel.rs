@@ -1,5 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod lib {
+    #[cfg(feature="std")]
+    pub use std::*;
+    #[cfg(not(feature="std"))]
+    pub use core::*;
+}
+
 extern crate embedded_types;
 
 #[macro_use]

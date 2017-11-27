@@ -52,13 +52,27 @@ impl Status for Pong {
 
 pub struct Read<T: ReadRegister> {
     id: PacketID,
-    data: T,
+    phantom: ::lib::marker::PhantomData<T>,
+}
+
+impl<T: ReadRegister> Read<T> {
+    pub fn new(id: PacketID) -> Self {
+        Read{id: id, phantom: ::lib::marker::PhantomData}
+    }
 }
 
 impl<T: ReadRegister> Instruction for Read<T> {
     type Array = [u8; 14];
-    const LENGTH: u16 = 14;
+    const LENGTH: u16 = 7;
     const INSTRUCTION_VALUE: u8 = 0x02;
+
+    fn serialize(&self) -> [u8; 14] {
+        let mut array = [0xff, 0xff, 0xfd, 0x00, u8::from(self.id), Self::LENGTH as u8, (Self::LENGTH >> 8) as u8, Self::INSTRUCTION_VALUE, T::ADDRESS as u8, (T::ADDRESS >> 8) as u8, T::SIZE as u8, (T::SIZE >> 8) as u8, 0x00, 0x00];
+        let crc = u16::from(crc::CRC::calc(&array[0..(10+T::SIZE) as usize]));
+        array[12] = crc as u8;
+        array[13] = (crc >> 8) as u8;
+        array
+    }   
 }
 
 pub struct Write<T: WriteRegister> {
@@ -163,6 +177,14 @@ mod tests {
         assert_eq!(
             Write::new(PacketID::unicast(1), ::pro::control_table::GoalPosition::new(0xabcd)).serialize(),
             [0xff, 0xff, 0xfd, 0x00, 0x01, 0x09, 0x00, 0x03, 0x54, 0x02, 0xcd, 0xab, 0x00, 0x00, 0x0d, 0xe5]
+        );
+    }
+
+    #[test]
+    fn test_read() {
+        assert_eq!(
+            Read::<::pro::control_table::PresentPosition>::new(PacketID::unicast(1)).serialize(),
+            [0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x02, 611u16 as u8, (611u16 >> 8) as u8, 0x04, 0x00, 85, 150]
         );
     }
 }
