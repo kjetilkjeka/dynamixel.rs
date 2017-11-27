@@ -37,6 +37,38 @@ pub trait Status {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Error {
+    ResultFail = 0x01,
+    InstructionError = 0x02,
+    CRCError = 0x03,
+    DataRangeError = 0x04,
+    DataLengthError = 0x05,
+    DataLimitError = 0x06,
+    AccessError = 0x07,
+}
+
+impl Error {
+    fn decode(e: u8) -> Option<Error> {
+        match e {
+            0x01 => Some(Error::ResultFail),
+            0x02 => Some(Error::InstructionError),
+            0x03 => Some(Error::CRCError),
+            0x04 => Some(Error::DataRangeError),
+            0x05 => Some(Error::DataLengthError),
+            0x06 => Some(Error::DataLimitError),
+            0x07 => Some(Error::AccessError),
+            _ => None,
+        }
+    }
+}
+
+impl From<Error> for u8 {
+    fn from(e: Error) -> u8 {
+        e as u8
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct PacketID(u8);
 
