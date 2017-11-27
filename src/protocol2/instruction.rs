@@ -102,6 +102,27 @@ impl<T: WriteRegister> Instruction for Write<T>{
     }
 }
 
+pub struct WriteResponse {
+    id: PacketID,
+    error: Option<Error>,
+}
+
+impl Status for WriteResponse {
+    type Array = [u8; 11];
+    const LENGTH: u16 = 4;
+    
+    fn deserialize(data: Self::Array) -> Result<Self, ()> {
+        Ok( WriteResponse{
+            id: PacketID::unicast(data[4]),
+            error: Error::decode(data[8]),
+        })
+    }
+    
+    fn error(&self) -> Option<Error> {
+        self.error
+    }
+}
+
 pub struct FactoryReset {
     id: PacketID,
 }
