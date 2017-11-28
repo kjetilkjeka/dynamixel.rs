@@ -42,7 +42,9 @@ macro_rules! protocol2_servo {
                 self.interface.write(&::protocol2::Instruction::serialize(&write));
                 let mut received_data = [0u8; 15];
                 // TODO: timeout checking
-                self.interface.read(&mut received_data[..11+R::SIZE as usize]);
+                self.interface.read(&mut received_data[..7]);
+                let length = received_data[5] as usize | ((received_data[6] as usize) << 8);
+                self.interface.read(&mut received_data[7..7+length]);
                 match <::protocol2::instruction::ReadResponse<R> as ::protocol2::Status>::deserialize(received_data) {
                     Ok(::protocol2::instruction::ReadResponse{value: v}) => Ok(v),
                     Err(e) => Err(e),
