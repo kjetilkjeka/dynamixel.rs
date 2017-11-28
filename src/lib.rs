@@ -16,6 +16,28 @@ mod control_table;
 pub mod protocol2;
 pub mod pro;
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Error {
+    Timeout,
+}
+
+pub trait Servo {
+    type OperatingModes;
+
+    fn set_enable_torque(&mut self, enable_torque: bool) -> Result<(), Error>;
+    
+    /// Configure the servo into a specified operating mode.
+    ///
+    /// This allows use of that operting as a setpoint by calling `set_setpoint(&mut self, operating_mode, f32)` afterwards.
+    fn set_operating_mode(&mut self, operating_mode: Self::OperatingModes) -> Result<(), Error>;
+
+    /// Set the servo setpoint
+    ///
+    /// Requires that the servo is configured to the correct operating mode with `set_operating_mode` first.
+    fn set_setpoint(&mut self, operating_mode: Self::OperatingModes, f32) -> Result<(), Error>;
+    fn get_position(&mut self) -> Result<f32, Error>;
+}
+
 pub trait Interface {
     fn read(&mut self, &mut [u8]);
     fn write(&mut self, &[u8]);
