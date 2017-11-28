@@ -7,17 +7,19 @@ macro_rules! protocol2_servo {
     ($name:ident, $write:path, $read:path) => {
         pub struct $name<T: ::Interface> {
             interface: T,
+            id: ::protocol2::ServoID,
         }
 
         impl<T: ::Interface> $name<T> {
-            pub fn new(interface: T) -> Self {
+            pub fn new(interface: T, id: ::protocol2::ServoID) -> Self {
                 $name{
                     interface: interface,
+                    id: id,
                 }
             }
             
-            pub fn ping(&mut self, id: ::protocol2::PacketID) -> Result<::protocol2::instruction::Pong, ::protocol2::Error> {
-                let ping = ::protocol2::instruction::Ping::new(id);
+            pub fn ping(&mut self) -> Result<::protocol2::instruction::Pong, ::protocol2::Error> {
+                let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::from(self.id));
                 self.interface.write(&::protocol2::Instruction::serialize(&ping));
                 let mut received_data = [0u8; 14];
                 // TODO: timeout checking
@@ -25,8 +27,8 @@ macro_rules! protocol2_servo {
                 <::protocol2::instruction::Pong as ::protocol2::Status>::deserialize(received_data)
             }
             
-            pub fn write<W: $write>(&mut self, id: ::protocol2::PacketID, register: W) -> Result<(), ::protocol2::Error> {
-                let write = ::protocol2::instruction::Write::new(id, register);
+            pub fn write<W: $write>(&mut self, register: W) -> Result<(), ::protocol2::Error> {
+                let write = ::protocol2::instruction::Write::new(::protocol2::PacketID::from(self.id), register);
                 self.interface.write(&::protocol2::Instruction::serialize(&write)[0..<::protocol2::instruction::Write<W> as ::protocol2::Instruction>::LENGTH as usize + 7]);
                 let mut received_data = [0u8; 11];
                 // TODO: timeout checking
@@ -37,8 +39,8 @@ macro_rules! protocol2_servo {
                 }
             }
 
-            pub fn read<R: $read>(&mut self, id: ::protocol2::PacketID) -> Result<R, ::protocol2::Error> {
-                let write = ::protocol2::instruction::Read::<R>::new(id);
+            pub fn read<R: $read>(&mut self) -> Result<R, ::protocol2::Error> {
+                let write = ::protocol2::instruction::Read::<R>::new(::protocol2::PacketID::from(self.id));
                 self.interface.write(&::protocol2::Instruction::serialize(&write));
                 let mut received_data = [0u8; 15];
                 // TODO: timeout checking
@@ -135,21 +137,49 @@ impl From<ProcessingError> for u8 {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub struct PacketID(u8);
+pub struct ServoID(u8);
+
+impl ServoID {
+    pub fn new(id: u8) -> ServoID {
+        assert!(id <= 252);
+        ServoID(id)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum PacketID {
+    Unicast(ServoID),
+    Broadcast,
+}
 
 impl PacketID {
     pub fn unicast(id: u8) -> PacketID {
         assert!(id <= 252);
-        PacketID(id)
+        PacketID::Unicast(ServoID::new(id))
     }
 
     pub fn broadcast() -> PacketID {
-        PacketID(254)
+        PacketID::Broadcast
+    }
+}
+
+impl From<ServoID> for PacketID {
+    fn from(id: ServoID) -> PacketID {
+        PacketID::Unicast(id)
     }
 }
 
 impl From<PacketID> for u8 {
     fn from(id: PacketID) -> u8 {
+        match id {
+            PacketID::Unicast(x) => u8::from(x),
+            PacketID::Broadcast => 254,
+        }
+    }
+}
+
+impl From<ServoID> for u8 {
+    fn from(id: ServoID) -> u8 {
         id.0
     }
 }
