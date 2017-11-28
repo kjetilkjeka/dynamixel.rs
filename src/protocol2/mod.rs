@@ -91,13 +91,13 @@ pub trait Status {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
+    Timeout,
     Format(FormatError),
     Processing(ProcessingError),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FormatError {
-    Timeout,
     ID,
     Header,
     CRC,
