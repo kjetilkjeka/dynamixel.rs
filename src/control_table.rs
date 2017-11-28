@@ -23,6 +23,7 @@ macro_rules! r_reg{
 
 macro_rules! register_impl{
     ($name:ident, bool, $address:expr) => {
+        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
         pub struct $name(bool);
 
         impl ::protocol2::Register for $name {
@@ -31,6 +32,7 @@ macro_rules! register_impl{
         }
     };
     ($name:ident, u8, $address:expr) => {
+        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
         pub struct $name(u8);
         
         impl ::protocol2::Register for $name {
@@ -39,6 +41,7 @@ macro_rules! register_impl{
         }
     };
     ($name:ident, i16, $address:expr) => {
+        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
         pub struct $name(i16);
         
         impl ::protocol2::Register for $name {
@@ -47,6 +50,7 @@ macro_rules! register_impl{
         }
     };
     ($name:ident, i32, $address:expr) => {
+        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
         pub struct $name(i32);
         
         impl ::protocol2::Register for $name {

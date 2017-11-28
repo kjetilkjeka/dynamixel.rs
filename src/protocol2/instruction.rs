@@ -50,6 +50,7 @@ impl Status for Pong {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Read<T: ReadRegister> {
     id: PacketID,
     phantom: ::lib::marker::PhantomData<T>,
