@@ -78,7 +78,7 @@ impl<T: ReadRegister> Instruction for Read<T> {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ReadResponse<T: ReadRegister> {
-    value: T,
+    pub value: T,
 }
 
 impl<T: ReadRegister> Status for ReadResponse<T> {

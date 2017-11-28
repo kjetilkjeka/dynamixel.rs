@@ -25,22 +25,28 @@ macro_rules! protocol2_servo {
                 <::protocol2::instruction::Pong as ::protocol2::Status>::deserialize(received_data)
             }
             
-            pub fn write<W: $write>(&mut self, id: ::protocol2::PacketID, register: W) -> Result<::protocol2::instruction::WriteResponse, ::protocol2::Error> {
+            pub fn write<W: $write>(&mut self, id: ::protocol2::PacketID, register: W) -> Result<(), ::protocol2::Error> {
                 let write = ::protocol2::instruction::Write::new(id, register);
                 self.interface.write(&::protocol2::Instruction::serialize(&write)[0..<::protocol2::instruction::Write<W> as ::protocol2::Instruction>::LENGTH as usize + 7]);
                 let mut received_data = [0u8; 11];
                 // TODO: timeout checking
                 self.interface.read(&mut received_data);
-                <::protocol2::instruction::WriteResponse as ::protocol2::Status>::deserialize(received_data)
+                match <::protocol2::instruction::WriteResponse as ::protocol2::Status>::deserialize(received_data) {
+                    Ok(::protocol2::instruction::WriteResponse{}) => Ok(()),
+                    Err(e) => Err(e),
+                }
             }
 
-            pub fn read<R: $read>(&mut self, id: ::protocol2::PacketID) -> Result<::protocol2::instruction::ReadResponse<R>, ::protocol2::Error> {
+            pub fn read<R: $read>(&mut self, id: ::protocol2::PacketID) -> Result<R, ::protocol2::Error> {
                 let write = ::protocol2::instruction::Read::<R>::new(id);
                 self.interface.write(&::protocol2::Instruction::serialize(&write));
                 let mut received_data = [0u8; 15];
                 // TODO: timeout checking
                 self.interface.read(&mut received_data[..11+R::SIZE as usize]);
-                <::protocol2::instruction::ReadResponse<R> as ::protocol2::Status>::deserialize(received_data)
+                match <::protocol2::instruction::ReadResponse<R> as ::protocol2::Status>::deserialize(received_data) {
+                    Ok(::protocol2::instruction::ReadResponse{value: v}) => Ok(v),
+                    Err(e) => Err(e),
+                }
             }
         }
     };
