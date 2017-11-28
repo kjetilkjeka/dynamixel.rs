@@ -69,7 +69,7 @@ impl<T: ReadRegister> Instruction for Read<T> {
 
     fn serialize(&self) -> [u8; 14] {
         let mut array = [0xff, 0xff, 0xfd, 0x00, u8::from(self.id), Self::LENGTH as u8, (Self::LENGTH >> 8) as u8, Self::INSTRUCTION_VALUE, T::ADDRESS as u8, (T::ADDRESS >> 8) as u8, T::SIZE as u8, (T::SIZE >> 8) as u8, 0x00, 0x00];
-        let crc = u16::from(crc::CRC::calc(&array[0..(10+T::SIZE) as usize]));
+        let crc = u16::from(crc::CRC::calc(&array[0..12]));
         array[12] = crc as u8;
         array[13] = (crc >> 8) as u8;
         array
@@ -215,7 +215,7 @@ mod tests {
     fn test_read() {
         assert_eq!(
             Read::<::pro::control_table::PresentPosition>::new(PacketID::unicast(1)).serialize(),
-            [0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x02, 611u16 as u8, (611u16 >> 8) as u8, 0x04, 0x00, 85, 150]
+            [0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x02, 611u16 as u8, (611u16 >> 8) as u8, 0x04, 0x00, 27, 249]
         );
     }
 
