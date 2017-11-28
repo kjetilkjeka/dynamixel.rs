@@ -8,6 +8,12 @@ macro_rules! rw_reg{
                 $name(v)
             }
         }
+        
+        impl From<$name> for $type {
+            fn from(v: $name) -> $type {
+                v.0
+            }
+        }
 
         read_register_impl!($name, $type);
         write_register_impl!($name, $type);
@@ -17,6 +23,13 @@ macro_rules! rw_reg{
 macro_rules! r_reg{
     ($name:ident, $type:ident, $address:expr) => {
         register_impl!($name, $type, $address);
+
+        impl From<$name> for $type {
+            fn from(v: $name) -> $type {
+                v.0
+            }
+        }
+        
         read_register_impl!($name, $type);
     };
 }
