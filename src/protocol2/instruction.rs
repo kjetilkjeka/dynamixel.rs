@@ -76,6 +76,36 @@ impl<T: ReadRegister> Instruction for Read<T> {
     }   
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct ReadResponse<T: ReadRegister> {
+    value: T,
+}
+
+impl<T: ReadRegister> Status for ReadResponse<T> {
+    type Array = [u8; 15];
+    const LENGTH: u16 = 4 + T::SIZE;
+    
+    fn deserialize(data: Self::Array) -> Result<Self, Error>
+        where Self : Sized {
+        // check for formating error stuff
+        
+        // check for processing errors
+        if let Some(error) = ProcessingError::decode(data[8]) {
+            return Err(Error::Processing(error));
+        }
+
+        let mut parameters = [0, 0, 0, 0];
+        for i in 0..T::SIZE as usize {
+            parameters[i] = data[9+i];
+        }
+        
+        Ok( ReadResponse {
+            value: T::deserialize(parameters),
+        } )
+    }
+}
+
+
 pub struct Write<T: WriteRegister> {
     id: PacketID,
     data: T,
@@ -186,6 +216,15 @@ mod tests {
         assert_eq!(
             Read::<::pro::control_table::PresentPosition>::new(PacketID::unicast(1)).serialize(),
             [0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x02, 611u16 as u8, (611u16 >> 8) as u8, 0x04, 0x00, 85, 150]
+        );
+    }
+
+    #[test]
+    fn test_read_response() {
+        assert_eq!(ReadResponse::<::pro::control_table::GoalPosition>::deserialize([0xff, 0xff, 0xfd, 0x00, 0x01, 0x08, 0x00, 0x55, 0x00, 0xa6, 0x00, 0x00, 0x00, 0x8c, 0xc0]),
+                   Ok(ReadResponse{
+                       value: ::pro::control_table::GoalPosition::new(0x000000a6),
+                   })
         );
     }
 }
