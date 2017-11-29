@@ -78,7 +78,8 @@ macro_rules! read_register_impl{
         impl ReadRegister for $name {}
         
         impl ::protocol2::ReadRegister for $name {
-            fn deserialize(data: [u8; 4]) -> Self {
+            fn deserialize(data: &[u8]) -> Self {
+                assert_eq!(data.len(), 1);
                 $name(data[0]&1 == 1)
             }
         }
@@ -87,7 +88,8 @@ macro_rules! read_register_impl{
         impl ReadRegister for $name {}
         
         impl ::protocol2::ReadRegister for $name {
-            fn deserialize(data: [u8; 4]) -> Self {
+            fn deserialize(data: &[u8]) -> Self {
+                assert_eq!(data.len(), 1);
                 $name(data[0])
             }
         }
@@ -96,7 +98,8 @@ macro_rules! read_register_impl{
         impl ReadRegister for $name {}
         
         impl ::protocol2::ReadRegister for $name {
-            fn deserialize(data: [u8; 4]) -> Self {
+            fn deserialize(data: &[u8]) -> Self {
+                assert_eq!(data.len(), 1);
                 $name(data[0] as i8)
             }
         }
@@ -105,7 +108,8 @@ macro_rules! read_register_impl{
         impl ReadRegister for $name {}
         
         impl ::protocol2::ReadRegister for $name {
-            fn deserialize(data: [u8; 4]) -> Self {
+            fn deserialize(data: &[u8]) -> Self {
+                assert_eq!(data.len(), 2);
                 $name(data[0] as i16 | ((data[1] as u16) << 8) as i16)
             }
         }
@@ -114,7 +118,8 @@ macro_rules! read_register_impl{
         impl ReadRegister for $name {}
 
         impl ::protocol2::ReadRegister for $name {
-            fn deserialize(data: [u8; 4]) -> Self {
+            fn deserialize(data: &[u8]) -> Self {
+                assert_eq!(data.len(), 4);
                 $name((data[0] as u32 | (data[1] as u32) << 8 | (data[2] as u32) << 16 | (data[3] as u32) << 24))
             }
         }
@@ -123,7 +128,8 @@ macro_rules! read_register_impl{
         impl ReadRegister for $name {}
         
         impl ::protocol2::ReadRegister for $name {
-            fn deserialize(data: [u8; 4]) -> Self {
+            fn deserialize(data: &[u8]) -> Self {
+                assert_eq!(data.len(), 4);
                 $name((data[0] as u32 | (data[1] as u32) << 8 | (data[2] as u32) << 16 | (data[3] as u32) << 24) as i32)
             }
         }

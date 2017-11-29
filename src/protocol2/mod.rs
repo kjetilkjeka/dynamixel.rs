@@ -64,11 +64,12 @@ pub trait Register {
     const ADDRESS: u16;
 }
     
-pub trait ReadRegister : Register {
-    fn deserialize([u8; 4]) -> Self;
+pub trait ReadRegister: Register {
+    fn deserialize(&[u8]) -> Self;
 }
 
-pub trait WriteRegister : Register {
+pub trait WriteRegister: Register {
+    // TODO: change 4 to Self::SIZE when const generics land
     fn serialize(&self) -> [u8; 4];
 }
 
@@ -86,7 +87,25 @@ pub trait Instruction {
 pub trait Status {
     const LENGTH: u16;
 
-    fn deserialize(data: &[u8]) -> Result<Self, Error> where Self: Sized;
+    fn deserialize_parameters(parameters: &[u8]) -> Self;
+    
+    fn deserialize(data: &[u8]) -> Result<Self, Error>
+        where Self: Sized {
+        // check for formating error stuff
+        
+        // check for processing errors
+        if let Some(error) = ProcessingError::decode(data[8]) {
+            return Err(Error::Processing(error));
+        }
+
+        let length = data[5] as u16 | ((data[6] as u16) << 8);
+        if length != Self::LENGTH {
+            return Err(Error::Format(FormatError::Length));
+        }
+        
+        let parameters_range = 9..(9 + Self::LENGTH as usize - 4);
+        Ok( Self::deserialize_parameters(&data[parameters_range]) )
+    }
 }
 
 impl From<::Error> for Error {

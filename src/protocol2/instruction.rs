@@ -33,19 +33,12 @@ pub struct Pong {
 impl Status for Pong {
     const LENGTH: u16 = 7;
 
-    fn deserialize(data: &[u8]) -> Result<Self, Error>
-        where Self : Sized {
-        // check for formating error stuff
-        
-        // check for processing errors
-        if let Some(error) = ProcessingError::decode(data[8]) {
-            return Err(Error::Processing(error));
+    fn deserialize_parameters(parameters: &[u8]) -> Self {
+        assert_eq!(parameters.len(), 3);
+        Pong {
+            model_number: (parameters[0] as u16) | (parameters[1] as u16) << 8,
+            fw_version: parameters[2],
         }
-        
-        Ok( Pong {
-            model_number: (data[9] as u16) | (data[10] as u16) << 8,
-            fw_version: data[11],
-        } )
     }
 }
 
@@ -82,24 +75,11 @@ pub struct ReadResponse<T: ReadRegister> {
 
 impl<T: ReadRegister> Status for ReadResponse<T> {
     const LENGTH: u16 = 4 + T::SIZE;
-    
-    fn deserialize(data: &[u8]) -> Result<Self, Error>
-        where Self : Sized {
-        // check for formating error stuff
-        
-        // check for processing errors
-        if let Some(error) = ProcessingError::decode(data[8]) {
-            return Err(Error::Processing(error));
-        }
 
-        let mut parameters = [0, 0, 0, 0];
-        for i in 0..T::SIZE as usize {
-            parameters[i] = data[9+i];
+    fn deserialize_parameters(parameters: &[u8]) -> Self{
+        ReadResponse{
+            value: T::deserialize(parameters)
         }
-        
-        Ok( ReadResponse {
-            value: T::deserialize(parameters),
-        } )
     }
 }
 
@@ -142,17 +122,9 @@ pub struct WriteResponse {
 impl Status for WriteResponse {
     const LENGTH: u16 = 4;
     
-    fn deserialize(data: &[u8]) -> Result<Self, Error>
-        where Self : Sized {
-        // check for formating error stuff
-        
-        // check for processing errors
-        if let Some(error) = ProcessingError::decode(data[8]) {
-            return Err(Error::Processing(error));
-        }
-        
-        Ok( WriteResponse {
-        } )
+    fn deserialize_parameters(parameters: &[u8]) -> Self {
+        assert_eq!(parameters.len(), 0);
+        WriteResponse {}
     }
 }
 
