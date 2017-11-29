@@ -2,6 +2,7 @@ use bit_field::BitField;
 
 #[macro_use]
 mod control_table;
+mod instruction;
 mod checksum;
 
 pub trait Register {
