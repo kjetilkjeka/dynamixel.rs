@@ -2,6 +2,7 @@ use bit_field::BitField;
 
 #[macro_use]
 mod control_table;
+mod checksum;
 
 pub trait Register {
     const SIZE: u8;
