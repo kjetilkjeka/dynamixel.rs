@@ -39,7 +39,7 @@ pub trait Status {
         // check for formating error stuff
         
         // check for processing errors
-        if let Some(error) = ProcessingError::decode(data[8]).unwrap() {
+        if let Some(error) = ProcessingError::decode(data[4]).unwrap() {
             return Err(Error::Processing(error));
         }
         
@@ -48,7 +48,7 @@ pub trait Status {
             return Err(Error::Format(FormatError::Length));
         }
         
-        let parameters_range = 9..(9 + Self::LENGTH as usize - 4);
+        let parameters_range = 4..(4 + Self::LENGTH as usize - 2);
         Ok( Self::deserialize_parameters(&data[parameters_range]) )
     }
 }
