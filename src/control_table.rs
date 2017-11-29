@@ -1,4 +1,3 @@
-#[macro_export]
 macro_rules! rw_reg{
     ($name:ident, $type:ident, $address:expr) => {
         register_impl!($name, $type, $address);

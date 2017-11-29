@@ -1,5 +1,3 @@
-#[macro_use]
-use protocol2;
 use Interface;
 use Servo;
 use Error;
@@ -26,7 +24,7 @@ impl<T: Interface> Servo for M4210S260R<T> {
     fn set_setpoint(&mut self, operating_mode: Self::OperatingModes, value: f32) -> Result<(), Error> {
         match operating_mode {
             ::pro::OperatingModes::Torque => {
-                let goal_torque = ((value * 2048.0) as i16);
+                let goal_torque = (value * 2048.0) as i16;
                 self.write(::pro::control_table::GoalTorque::new(goal_torque)).unwrap();
             },                
             ::pro::OperatingModes::Velocity => unimplemented!(),

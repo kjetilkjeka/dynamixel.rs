@@ -1,8 +1,6 @@
 pub mod instruction;
 mod crc;
 
-use Interface;
-
 macro_rules! protocol2_servo {
     ($name:ident, $write:path, $read:path) => {
         pub struct $name<T: ::Interface> {
