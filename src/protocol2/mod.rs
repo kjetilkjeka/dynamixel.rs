@@ -96,7 +96,7 @@ pub trait Status {
         // check for formating error stuff
         
         // check for processing errors
-        if let Some(error) = ProcessingError::decode(data[8]).unwrap() {
+        if let Some(error) = ProcessingError::decode(data[8]).map_err(|()| Error::Format(FormatError::InvalidError))? {
             return Err(Error::Processing(error));
         }
 
@@ -131,6 +131,7 @@ pub enum FormatError {
     Header,
     CRC,
     Length,
+    InvalidError,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
