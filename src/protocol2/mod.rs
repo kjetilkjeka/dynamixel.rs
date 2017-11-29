@@ -94,7 +94,7 @@ pub trait Status {
         // check for formating error stuff
         
         // check for processing errors
-        if let Some(error) = ProcessingError::decode(data[8]) {
+        if let Some(error) = ProcessingError::decode(data[8]).unwrap() {
             return Err(Error::Processing(error));
         }
 
@@ -143,16 +143,17 @@ pub enum ProcessingError {
 }
 
 impl ProcessingError {
-    fn decode(e: u8) -> Option<ProcessingError> {
+    fn decode(e: u8) -> Result<Option<ProcessingError>, ()> {
         match e {
-            0x01 => Some(ProcessingError::ResultFail),
-            0x02 => Some(ProcessingError::InstructionError),
-            0x03 => Some(ProcessingError::CRCError),
-            0x04 => Some(ProcessingError::DataRangeError),
-            0x05 => Some(ProcessingError::DataLengthError),
-            0x06 => Some(ProcessingError::DataLimitError),
-            0x07 => Some(ProcessingError::AccessError),
-            _ => None,
+            0x00 => Ok(None),
+            0x01 => Ok(Some(ProcessingError::ResultFail)),
+            0x02 => Ok(Some(ProcessingError::InstructionError)),
+            0x03 => Ok(Some(ProcessingError::CRCError)),
+            0x04 => Ok(Some(ProcessingError::DataRangeError)),
+            0x05 => Ok(Some(ProcessingError::DataLengthError)),
+            0x06 => Ok(Some(ProcessingError::DataLimitError)),
+            0x07 => Ok(Some(ProcessingError::AccessError)),
+            _ => Err(()),
         }
     }
 }
