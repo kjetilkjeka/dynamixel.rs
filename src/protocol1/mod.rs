@@ -134,3 +134,51 @@ impl ::lib::fmt::Debug for ProcessingError {
         write!(f, "]")
     }
 }
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct ServoID(u8);
+
+impl ServoID {
+    pub fn new(id: u8) -> ServoID {
+        assert!(id <= 253);
+        ServoID(id)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum PacketID {
+    Unicast(ServoID),
+    Broadcast,
+}
+
+impl PacketID {
+    pub fn unicast(id: u8) -> PacketID {
+        assert!(id <= 253);
+        PacketID::Unicast(ServoID::new(id))
+    }
+
+    pub fn broadcast() -> PacketID {
+        PacketID::Broadcast
+    }
+}
+
+impl From<ServoID> for PacketID {
+    fn from(id: ServoID) -> PacketID {
+        PacketID::Unicast(id)
+    }
+}
+
+impl From<PacketID> for u8 {
+    fn from(id: PacketID) -> u8 {
+        match id {
+            PacketID::Unicast(x) => u8::from(x),
+            PacketID::Broadcast => 254,
+        }
+    }
+}
+
+impl From<ServoID> for u8 {
+    fn from(id: ServoID) -> u8 {
+        id.0
+    }
+}
