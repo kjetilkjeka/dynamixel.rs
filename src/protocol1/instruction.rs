@@ -100,6 +100,6 @@ mod tests {
     #[test]
     fn test_write() {
         assert_eq!(WriteData::new(PacketID::unicast(1), ::dynamixel::mx28::control_table::GoalPosition::new(0x123)).serialize(), [0xff, 0xff, 0x01, 0x05, 0x03, 30, 0x23, 0x01, 180, 0x00, 0x00]);
-        assert_eq!(WriteData::new(PacketID::broadcast(), ::dynamixel::mx28::control_table::GoalPosition::new(0x123)).serialize(), [0xff, 0xff, 0xfe, 0x05, 0x03, 30, 0x23, 0x01, 55, 0x00, 0x00]);
+        assert_eq!(WriteData::new(PacketID::broadcast(), ::dynamixel::mx28::control_table::GoalPosition::new(0x123)).serialize(), [0xff, 0xff, 0xfe, 0x05, 0x03, 30, 0x23, 0x01, 183, 0x00, 0x00]);
     }
 }

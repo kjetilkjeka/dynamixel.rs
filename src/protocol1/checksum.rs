@@ -1,5 +1,3 @@
-use bit_field::BitField;
-
 pub(crate) struct Checksum(u8);
 
 impl Checksum {
@@ -7,11 +5,7 @@ impl Checksum {
         let mut sum: u8 = 0;
         
         for b in data {
-            if 255 - b >= sum {
-                sum += b;
-            } else {
-                sum = sum.get_bits(0..7) + b.get_bits(0..7);
-            }
+            sum = sum.wrapping_add(*b);
         }
 
         Checksum(!sum)
