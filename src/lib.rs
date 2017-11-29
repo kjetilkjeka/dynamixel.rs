@@ -44,17 +44,6 @@ pub trait Interface {
     fn write(&mut self, &[u8]) -> Result<(), Error>;
 }
 
-#[cfg(feature = "std")]
-impl<T: ::std::io::Read + ::std::io::Write> Interface for T {
-    fn read(&mut self, buf: &mut [u8]) {
-        self.read_exact(buf).unwrap();
-    }
-    
-    fn write(&mut self, data: &[u8]) {
-        self.write(data).unwrap();
-    }
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
