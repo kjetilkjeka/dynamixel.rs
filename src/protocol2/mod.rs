@@ -31,7 +31,7 @@ macro_rules! protocol2_servo {
                 self.interface.write(&::protocol2::Instruction::serialize(&ping))?;
                 let mut received_data = [0u8; 14];
                 self.read_response(&mut received_data)?;
-                <::protocol2::instruction::Pong as ::protocol2::Status>::deserialize(received_data)
+                <::protocol2::instruction::Pong as ::protocol2::Status>::deserialize(&received_data)
             }
             
             pub fn write<W: $write>(&mut self, register: W) -> Result<(), ::protocol2::Error> {
@@ -39,7 +39,7 @@ macro_rules! protocol2_servo {
                 self.interface.write(&::protocol2::Instruction::serialize(&write)[0..<::protocol2::instruction::Write<W> as ::protocol2::Instruction>::LENGTH as usize + 7])?;
                 let mut received_data = [0u8; 11];
                 self.read_response(&mut received_data)?;
-                match <::protocol2::instruction::WriteResponse as ::protocol2::Status>::deserialize(received_data) {
+                match <::protocol2::instruction::WriteResponse as ::protocol2::Status>::deserialize(&received_data) {
                     Ok(::protocol2::instruction::WriteResponse{}) => Ok(()),
                     Err(e) => Err(e),
                 }
@@ -50,7 +50,7 @@ macro_rules! protocol2_servo {
                 self.interface.write(&::protocol2::Instruction::serialize(&write))?;
                 let mut received_data = [0u8; 15];
                 self.read_response(&mut received_data)?;
-                match <::protocol2::instruction::ReadResponse<R> as ::protocol2::Status>::deserialize(received_data) {
+                match <::protocol2::instruction::ReadResponse<R> as ::protocol2::Status>::deserialize(&received_data) {
                     Ok(::protocol2::instruction::ReadResponse{value: v}) => Ok(v),
                     Err(e) => Err(e),
                 }
@@ -84,12 +84,9 @@ pub trait Instruction {
 }
 
 pub trait Status {
-    // The array type is no longer needed when const generics land
-    // replace with [u8; Self::LENGTH]
-    type Array;
     const LENGTH: u16;
 
-    fn deserialize(data: Self::Array) -> Result<Self, Error> where Self: Sized;
+    fn deserialize(data: &[u8]) -> Result<Self, Error> where Self: Sized;
 }
 
 impl From<::Error> for Error {

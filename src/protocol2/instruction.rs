@@ -31,10 +31,9 @@ pub struct Pong {
 }
 
 impl Status for Pong {
-    type Array = [u8; 14];
     const LENGTH: u16 = 7;
 
-    fn deserialize(data: Self::Array) -> Result<Self, Error>
+    fn deserialize(data: &[u8]) -> Result<Self, Error>
         where Self : Sized {
         // check for formating error stuff
         
@@ -82,10 +81,9 @@ pub struct ReadResponse<T: ReadRegister> {
 }
 
 impl<T: ReadRegister> Status for ReadResponse<T> {
-    type Array = [u8; 15];
     const LENGTH: u16 = 4 + T::SIZE;
     
-    fn deserialize(data: Self::Array) -> Result<Self, Error>
+    fn deserialize(data: &[u8]) -> Result<Self, Error>
         where Self : Sized {
         // check for formating error stuff
         
@@ -142,10 +140,9 @@ pub struct WriteResponse {
 }
 
 impl Status for WriteResponse {
-    type Array = [u8; 11];
     const LENGTH: u16 = 4;
     
-    fn deserialize(data: Self::Array) -> Result<Self, Error>
+    fn deserialize(data: &[u8]) -> Result<Self, Error>
         where Self : Sized {
         // check for formating error stuff
         
@@ -195,7 +192,7 @@ mod tests {
     
     #[test]
     fn test_pong() {
-        assert_eq!(Pong::deserialize([0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x55, 0x00, 0x06, 0x04, 0x026, 0x65, 0x5d]),
+        assert_eq!(Pong::deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x55, 0x00, 0x06, 0x04, 0x026, 0x65, 0x5d]),
                    Ok(Pong{
                        model_number: 0x0406,
                        fw_version: 0x26,
@@ -221,7 +218,7 @@ mod tests {
 
     #[test]
     fn test_read_response() {
-        assert_eq!(ReadResponse::<::pro::control_table::GoalPosition>::deserialize([0xff, 0xff, 0xfd, 0x00, 0x01, 0x08, 0x00, 0x55, 0x00, 0xa6, 0x00, 0x00, 0x00, 0x8c, 0xc0]),
+        assert_eq!(ReadResponse::<::pro::control_table::GoalPosition>::deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x08, 0x00, 0x55, 0x00, 0xa6, 0x00, 0x00, 0x00, 0x8c, 0xc0]),
                    Ok(ReadResponse{
                        value: ::pro::control_table::GoalPosition::new(0x000000a6),
                    })
