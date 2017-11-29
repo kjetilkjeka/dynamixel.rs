@@ -1,5 +1,19 @@
 use bit_field::BitField;
 
+pub trait Register {
+    const SIZE: u8;
+    const ADDRESS: u8;
+}
+    
+pub trait ReadRegister: Register {
+    fn deserialize(&[u8]) -> Self;
+}
+
+pub trait WriteRegister: Register {
+    // TODO: change 4 to Self::SIZE when const generics land
+    fn serialize(&self) -> [u8; 4];
+}
+
 pub trait Instruction {
     // The array type is no longer needed when const generics land
     // replace with [u8; Self::LENGTH]
