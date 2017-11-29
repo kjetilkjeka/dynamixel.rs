@@ -1,4 +1,6 @@
 pub mod instruction;
+#[macro_use]
+mod control_table;
 mod crc;
 
 macro_rules! protocol2_servo {

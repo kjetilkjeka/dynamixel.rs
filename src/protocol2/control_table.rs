@@ -1,6 +1,6 @@
-macro_rules! rw_reg{
+macro_rules! rw_reg2{
     ($name:ident, $type:ident, $address:expr) => {
-        register_impl!($name, $type, $address);
+        register_impl2!($name, $type, $address);
 
         impl $name {
             pub fn new(v: $type) -> Self {
@@ -14,14 +14,14 @@ macro_rules! rw_reg{
             }
         }
 
-        read_register_impl!($name, $type);
-        write_register_impl!($name, $type);
+        read_register_impl2!($name, $type);
+        write_register_impl2!($name, $type);
     };
 }
 
-macro_rules! r_reg{
+macro_rules! r_reg2{
     ($name:ident, $type:ident, $address:expr) => {
-        register_impl!($name, $type, $address);
+        register_impl2!($name, $type, $address);
 
         impl From<$name> for $type {
             fn from(v: $name) -> $type {
@@ -29,11 +29,11 @@ macro_rules! r_reg{
             }
         }
         
-        read_register_impl!($name, $type);
+        read_register_impl2!($name, $type);
     };
 }
 
-macro_rules! register_impl{
+macro_rules! register_impl2{
     ($name:ident, bool, $address:expr) => {
         #[derive(Debug, PartialEq, Eq, Clone, Copy)]
         pub struct $name(bool);
@@ -73,7 +73,7 @@ macro_rules! register_impl{
 
 }
 
-macro_rules! read_register_impl{
+macro_rules! read_register_impl2{
     ($name:ident, bool) => {
         impl ReadRegister for $name {}
         
@@ -136,7 +136,7 @@ macro_rules! read_register_impl{
     };
 }
 
-macro_rules! write_register_impl{
+macro_rules! write_register_impl2{
     ($name:ident, bool) => {
         impl WriteRegister for $name {}
         

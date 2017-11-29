@@ -10,9 +10,6 @@ mod lib {
 extern crate embedded_types;
 extern crate bit_field;
 
-#[macro_use]
-mod control_table;
-
 pub mod protocol1;
 #[macro_use]
 pub mod protocol2;
