@@ -1,5 +1,8 @@
 use bit_field::BitField;
 
+#[macro_use]
+mod control_table;
+
 pub trait Register {
     const SIZE: u8;
     const ADDRESS: u8;

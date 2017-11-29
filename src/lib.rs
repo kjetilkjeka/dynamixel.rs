@@ -10,10 +10,12 @@ mod lib {
 extern crate embedded_types;
 extern crate bit_field;
 
+#[macro_use]
 pub mod protocol1;
 #[macro_use]
 pub mod protocol2;
 pub mod pro;
+pub mod dynamixel;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
