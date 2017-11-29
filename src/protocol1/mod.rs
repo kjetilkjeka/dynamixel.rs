@@ -2,8 +2,56 @@ use bit_field::BitField;
 
 #[macro_use]
 mod control_table;
-mod instruction;
+pub(crate) mod instruction;
 mod checksum;
+
+macro_rules! protocol1_servo {
+    ($name:ident, $write:path, $read:path) => {
+        pub struct $name<T: ::Interface> {
+            interface: T,
+            id: ::protocol1::ServoID,
+        }
+        
+        impl<T: ::Interface> $name<T> {
+            pub fn new(interface: T, id: ::protocol1::ServoID) -> Self {
+                $name{
+                    interface: interface,
+                    id: id,
+                }
+            }
+            
+            fn read_response(&mut self, data: &mut [u8]) -> Result<(), ::Error> {
+                // first read header
+                self.interface.read(&mut data[..7])?;
+
+                // then read rest of message depending on header length
+                let length = data[5] as usize | ((data[6] as usize) << 8);
+                self.interface.read(&mut data[7..7+length])?;
+                Ok(())
+            }
+            
+            pub fn ping(&mut self) -> Result<::protocol1::instruction::Pong, ::protocol1::Error> {
+                let ping = ::protocol1::instruction::Ping::new(::protocol1::PacketID::from(self.id));
+                self.interface.write(&::protocol1::Instruction::serialize(&ping))?;
+                let mut received_data = [0u8; 14];
+                self.read_response(&mut received_data)?;
+                <::protocol1::instruction::Pong as ::protocol1::Status>::deserialize(&received_data)
+            }
+            
+            pub fn write_data<W: $write>(&mut self, register: W) -> Result<(), ::protocol1::Error> {
+                let write = ::protocol1::instruction::WriteData::new(::protocol1::PacketID::from(self.id), register);
+                self.interface.write(&::protocol1::Instruction::serialize(&write)[0..<::protocol1::instruction::WriteData<W> as ::protocol1::Instruction>::LENGTH as usize + 7])?;
+                let mut received_data = [0u8; 11];
+                self.read_response(&mut received_data)?;
+                match <::protocol1::instruction::WriteDataResponse as ::protocol1::Status>::deserialize(&received_data) {
+                    Ok(::protocol1::instruction::WriteDataResponse{}) => Ok(()),
+                    Err(e) => Err(e),
+                }
+            }
+        }
+    };
+}
+
 
 pub trait Register {
     const SIZE: u8;
