@@ -39,8 +39,8 @@ pub trait Servo {
 }
 
 pub trait Interface {
-    fn read(&mut self, &mut [u8]);
-    fn write(&mut self, &[u8]);
+    fn read(&mut self, &mut [u8]) -> Result<(), Error>;
+    fn write(&mut self, &[u8]) -> Result<(), Error>;
 }
 
 #[cfg(feature = "std")]

@@ -17,22 +17,30 @@ macro_rules! protocol2_servo {
                     id: id,
                 }
             }
+
+            fn read_response(&mut self, data: &mut [u8]) -> Result<(), ::Error> {
+                // first read header
+                self.interface.read(&mut data[..7])?;
+
+                // then read rest of message depending on header length
+                let length = data[5] as usize | ((data[6] as usize) << 8);
+                self.interface.read(&mut data[7..7+length])?;
+                Ok(())
+            }
             
             pub fn ping(&mut self) -> Result<::protocol2::instruction::Pong, ::protocol2::Error> {
                 let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::from(self.id));
-                self.interface.write(&::protocol2::Instruction::serialize(&ping));
+                self.interface.write(&::protocol2::Instruction::serialize(&ping))?;
                 let mut received_data = [0u8; 14];
-                // TODO: timeout checking
-                self.interface.read(&mut received_data);
+                self.read_response(&mut received_data)?;
                 <::protocol2::instruction::Pong as ::protocol2::Status>::deserialize(received_data)
             }
             
             pub fn write<W: $write>(&mut self, register: W) -> Result<(), ::protocol2::Error> {
                 let write = ::protocol2::instruction::Write::new(::protocol2::PacketID::from(self.id), register);
-                self.interface.write(&::protocol2::Instruction::serialize(&write)[0..<::protocol2::instruction::Write<W> as ::protocol2::Instruction>::LENGTH as usize + 7]);
+                self.interface.write(&::protocol2::Instruction::serialize(&write)[0..<::protocol2::instruction::Write<W> as ::protocol2::Instruction>::LENGTH as usize + 7])?;
                 let mut received_data = [0u8; 11];
-                // TODO: timeout checking
-                self.interface.read(&mut received_data);
+                self.read_response(&mut received_data)?;
                 match <::protocol2::instruction::WriteResponse as ::protocol2::Status>::deserialize(received_data) {
                     Ok(::protocol2::instruction::WriteResponse{}) => Ok(()),
                     Err(e) => Err(e),
@@ -41,12 +49,9 @@ macro_rules! protocol2_servo {
 
             pub fn read<R: $read>(&mut self) -> Result<R, ::protocol2::Error> {
                 let write = ::protocol2::instruction::Read::<R>::new(::protocol2::PacketID::from(self.id));
-                self.interface.write(&::protocol2::Instruction::serialize(&write));
+                self.interface.write(&::protocol2::Instruction::serialize(&write))?;
                 let mut received_data = [0u8; 15];
-                // TODO: timeout checking
-                self.interface.read(&mut received_data[..7]);
-                let length = received_data[5] as usize | ((received_data[6] as usize) << 8);
-                self.interface.read(&mut received_data[7..7+length]);
+                self.read_response(&mut received_data)?;
                 match <::protocol2::instruction::ReadResponse<R> as ::protocol2::Status>::deserialize(received_data) {
                     Ok(::protocol2::instruction::ReadResponse{value: v}) => Ok(v),
                     Err(e) => Err(e),
@@ -87,6 +92,14 @@ pub trait Status {
     const LENGTH: u16;
 
     fn deserialize(data: Self::Array) -> Result<Self, Error> where Self: Sized;
+}
+
+impl From<::Error> for Error {
+    fn from(e: ::Error) -> Error {
+        match e {
+            ::Error::Timeout => Error::Timeout
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
