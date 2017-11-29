@@ -1,5 +1,40 @@
 use bit_field::BitField;
 
+pub trait Instruction {
+    // The array type is no longer needed when const generics land
+    // replace with [u8; Self::LENGTH]
+    type Array;
+    const LENGTH: u8;
+    const INSTRUCTION_VALUE: u8;
+
+    // Serialize can be implemented generically once const generics land
+    fn serialize(&self) -> Self::Array;
+}
+
+pub trait Status {
+    const LENGTH: u8;
+
+    fn deserialize_parameters(parameters: &[u8]) -> Self;
+    
+    fn deserialize(data: &[u8]) -> Result<Self, Error>
+        where Self: Sized {
+        // check for formating error stuff
+        
+        // check for processing errors
+        if let Some(error) = ProcessingError::decode(data[8]).unwrap() {
+            return Err(Error::Processing(error));
+        }
+        
+        let length = data[3];
+        if length != Self::LENGTH {
+            return Err(Error::Format(FormatError::Length));
+        }
+        
+        let parameters_range = 9..(9 + Self::LENGTH as usize - 4);
+        Ok( Self::deserialize_parameters(&data[parameters_range]) )
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
     Timeout,
