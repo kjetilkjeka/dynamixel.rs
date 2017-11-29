@@ -66,7 +66,7 @@ impl<T: WriteRegister> Instruction for WriteData<T>{
 pub struct WriteDataResponse {}
 
 impl Status for WriteDataResponse {
-    const LENGTH: u8 = 4;
+    const LENGTH: u8 = 2;
     
     fn deserialize_parameters(parameters: &[u8]) -> Self {
         assert_eq!(parameters.len(), 0);
