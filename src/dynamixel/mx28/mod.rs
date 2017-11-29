@@ -1,1 +1,1 @@
-mod control_table;
+pub mod control_table;
