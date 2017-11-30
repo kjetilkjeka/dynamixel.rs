@@ -1,4 +1,4 @@
-pub mod instruction;
+pub(crate) mod instruction;
 #[macro_use]
 mod control_table;
 mod crc;
@@ -30,7 +30,9 @@ macro_rules! protocol2_servo {
             
             pub fn ping(&mut self) -> Result<::protocol2::instruction::Pong, ::protocol2::Error> {
                 let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::from(self.id));
-                self.interface.write(&::protocol2::Instruction::serialize(&ping))?;
+                for b in ::protocol2::Instruction::serialize(&ping) {
+                    self.interface.write(&[b])?;
+                }
                 let mut received_data = [0u8; 14];
                 self.read_response(&mut received_data)?;
                 <::protocol2::instruction::Pong as ::protocol2::Status>::deserialize(&received_data)
@@ -38,7 +40,9 @@ macro_rules! protocol2_servo {
             
             pub fn write<W: $write>(&mut self, register: W) -> Result<(), ::protocol2::Error> {
                 let write = ::protocol2::instruction::Write::new(::protocol2::PacketID::from(self.id), register);
-                self.interface.write(&::protocol2::Instruction::serialize(&write)[0..<::protocol2::instruction::Write<W> as ::protocol2::Instruction>::LENGTH as usize + 7])?;
+                for b in ::protocol2::Instruction::serialize(&write) {
+                    self.interface.write(&[b])?;
+                }
                 let mut received_data = [0u8; 11];
                 self.read_response(&mut received_data)?;
                 match <::protocol2::instruction::WriteResponse as ::protocol2::Status>::deserialize(&received_data) {
@@ -48,8 +52,10 @@ macro_rules! protocol2_servo {
             }
 
             pub fn read<R: $read>(&mut self) -> Result<R, ::protocol2::Error> {
-                let write = ::protocol2::instruction::Read::<R>::new(::protocol2::PacketID::from(self.id));
-                self.interface.write(&::protocol2::Instruction::serialize(&write))?;
+                let read = ::protocol2::instruction::Read::<R>::new(::protocol2::PacketID::from(self.id));
+                for b in ::protocol2::Instruction::serialize(&read) {
+                    self.interface.write(&[b])?;
+                }
                 let mut received_data = [0u8; 15];
                 self.read_response(&mut received_data)?;
                 match <::protocol2::instruction::ReadResponse<R> as ::protocol2::Status>::deserialize(&received_data) {
@@ -76,14 +82,33 @@ pub trait WriteRegister: Register {
 }
 
 pub trait Instruction {
-    // The array type is no longer needed when const generics land
-    // replace with [u8; Self::LENGTH]
-    type Array;
-    const LENGTH: u16;
+    const PARAMETERS: u16;
     const INSTRUCTION_VALUE: u8;
 
-    // Serialize can be implemented generically once const generics land
-    fn serialize(&self) -> Self::Array { unimplemented!() }
+    fn id(&self) -> PacketID;
+    
+    fn parameter(&self, index: usize) -> u8;
+
+    fn serialize<'a>(&'a self) -> Serializer<'a, Self> where Self: Sized {
+        let serializer = Serializer{
+            pos: 0,
+            length: 10 + Self::PARAMETERS,
+            crc: crc::CRC::new(),
+            instruction: self,
+        };
+
+        let mut length = 0;
+        for _b in serializer.skip(7) {
+            length += 1;
+        }
+
+        Serializer{
+            pos: 0,
+            length: length,
+            crc: crc::CRC::new(),
+            instruction: self,
+        }
+    }
 }
 
 pub trait Status {
@@ -107,6 +132,44 @@ pub trait Status {
         
         let parameters_range = 9..(9 + Self::LENGTH as usize - 4);
         Ok( Self::deserialize_parameters(&data[parameters_range]) )
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Serializer<'a, T: Instruction + 'a> {
+    pos: usize,
+    length: u16,
+    crc: crc::CRC,
+    instruction: &'a T,
+}
+
+impl<'a, T: Instruction + 'a> ::lib::iter::Iterator for Serializer<'a, T> {
+    type Item = u8;
+    
+    fn next(&mut self) -> Option<u8> {
+        let next_byte = match self.pos {
+            0 => Some(0xff),
+            1 => Some(0xff),
+            2 => Some(0xfd),
+            3 => Some(0x00),
+            4 => Some(u8::from(self.instruction.id())),
+            5 => Some(self.length as u8),
+            6 => Some((self.length >> 8) as u8),
+            7 => Some(T::INSTRUCTION_VALUE),
+            x if x < 8+T::PARAMETERS as usize => Some(self.instruction.parameter(x-8)),
+            x if x == 8+T::PARAMETERS as usize => Some(u16::from(self.crc) as u8),
+            x if x == 9+T::PARAMETERS as usize => Some((u16::from(self.crc) >> 8) as u8),
+            _ => None,
+        };
+
+        if self.pos < 8+T::PARAMETERS as usize {
+            self.crc.add(&[next_byte.unwrap()]);
+        }
+        
+        if let Some(_) = next_byte {
+            self.pos += 1;
+        }
+        next_byte
     }
 }
 

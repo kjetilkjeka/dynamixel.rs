@@ -1,5 +1,6 @@
 use protocol2::*;
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Ping {
     id: PacketID,
 }
@@ -11,20 +12,19 @@ impl Ping {
 }
 
 impl Instruction for Ping {
-    type Array = [u8; 10];
-    const LENGTH: u16 = 3;
+    const PARAMETERS: u16 = 0;
     const INSTRUCTION_VALUE: u8 = 0x01;
 
-    fn serialize(&self) -> [u8; 10] {
-        let mut array = [0xff, 0xff, 0xfd, 0x00, u8::from(self.id), Self::LENGTH as u8, (Self::LENGTH >> 8) as u8, Self::INSTRUCTION_VALUE, 0x00, 0x00];
-        let crc = u16::from(crc::CRC::calc(&array[0..8]));
-        array[8] = crc as u8;
-        array[9] = (crc >> 8) as u8;
-        array
+    fn id(&self) -> PacketID {
+        self.id
+    }
+
+    fn parameter(&self, _index: usize) -> u8 {
+        panic!("No parameters exists for Ping");
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Pong {
     model_number: u16,
     fw_version: u8,
@@ -42,7 +42,7 @@ impl Status for Pong {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Read<T: ReadRegister> {
     id: PacketID,
     phantom: ::lib::marker::PhantomData<T>,
@@ -55,20 +55,25 @@ impl<T: ReadRegister> Read<T> {
 }
 
 impl<T: ReadRegister> Instruction for Read<T> {
-    type Array = [u8; 14];
-    const LENGTH: u16 = 7;
+    const PARAMETERS: u16 = 4;
     const INSTRUCTION_VALUE: u8 = 0x02;
 
-    fn serialize(&self) -> [u8; 14] {
-        let mut array = [0xff, 0xff, 0xfd, 0x00, u8::from(self.id), Self::LENGTH as u8, (Self::LENGTH >> 8) as u8, Self::INSTRUCTION_VALUE, T::ADDRESS as u8, (T::ADDRESS >> 8) as u8, T::SIZE as u8, (T::SIZE >> 8) as u8, 0x00, 0x00];
-        let crc = u16::from(crc::CRC::calc(&array[0..12]));
-        array[12] = crc as u8;
-        array[13] = (crc >> 8) as u8;
-        array
-    }   
+    fn id(&self) -> PacketID {
+        self.id
+    }
+
+    fn parameter(&self, index: usize) -> u8 {
+        match index {
+            0 => T::ADDRESS as u8,
+            1 => (T::ADDRESS >> 8) as u8,
+            2 => T::SIZE as u8,
+            3 => (T::SIZE >> 8) as u8,
+            x => panic!("Read instruction parameter indexed with {}, only 4 parameters exists", x),
+        }
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct ReadResponse<T: ReadRegister> {
     pub value: T,
 }
@@ -84,6 +89,7 @@ impl<T: ReadRegister> Status for ReadResponse<T> {
 }
 
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Write<T: WriteRegister> {
     id: PacketID,
     data: T,
@@ -96,26 +102,27 @@ impl<T: WriteRegister> Write<T> {
 }
 
 impl<T: WriteRegister> Instruction for Write<T>{
-    // Use max size (4) untill const generics land
-    type Array = [u8; 16];
-    const LENGTH: u16 = 5 + T::SIZE;
+    const PARAMETERS: u16 = 2 + T::SIZE;
     const INSTRUCTION_VALUE: u8 = 0x03;
 
-    fn serialize(&self) -> [u8; 16] {
-        let mut array = [0xff, 0xff, 0xfd, 0x00, u8::from(self.id), Self::LENGTH as u8, (Self::LENGTH >> 8) as u8, Self::INSTRUCTION_VALUE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-        array[8] = T::ADDRESS as u8;
-        array[9] = (T::ADDRESS >> 8) as u8;
-        let data = self.data.serialize();
-        for i in 0..T::SIZE as usize {
-            array[10+i] = data[i];
+    fn id(&self) -> PacketID {
+        self.id
+    }
+    
+    fn parameter(&self, index: usize) -> u8 {
+        match index {
+            0 => T::ADDRESS as u8,
+            1 => (T::ADDRESS >> 8) as u8,
+            2 => self.data.serialize()[0],
+            3 => self.data.serialize()[1],
+            4 => self.data.serialize()[2],
+            5 => self.data.serialize()[3],
+            x => panic!("Read instruction parameter indexed with {}, only 6 parameters exists", x),
         }
-        let crc = u16::from(crc::CRC::calc(&array[0..(10+T::SIZE) as usize]));
-        array[10+T::SIZE as usize] = crc as u8;
-        array[11+T::SIZE as usize] = (crc >> 8) as u8;
-        array
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct WriteResponse {
 }
 
@@ -138,10 +145,20 @@ mod tests {
 
     #[test]
     fn test_ping() {
-        assert_eq!(Ping::new(PacketID::unicast(1)).serialize(), [0xff, 0xff, 0xfd, 0x00, 0x01, 0x03, 0x00, 0x01, 0x19, 0x4e]);
-        assert_eq!(Ping::new(PacketID::broadcast()).serialize(), [0xff, 0xff, 0xfd, 0x00, 0xfe, 0x03, 0x00, 0x01, 0x31, 0x42]);
+        let ping = Ping::new(PacketID::unicast(1));
+        let mut array = [0u8; 10];
+        for (i, b) in ping.serialize().enumerate() {
+            array[i] = b;
+        }
+        assert_eq!(array, [0xff, 0xff, 0xfd, 0x00, 0x01, 0x03, 0x00, 0x01, 0x19, 0x4e]);
+        
+        let ping = Ping::new(PacketID::broadcast());
+        let mut array = [0u8; 10];
+        for (i, b) in ping.serialize().enumerate() {
+            array[i] = b;
+        }
+        assert_eq!(array, [0xff, 0xff, 0xfd, 0x00, 0xfe, 0x03, 0x00, 0x01, 0x31, 0x42]);
     }
-    
     #[test]
     fn test_pong() {
         assert_eq!(Pong::deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x55, 0x00, 0x06, 0x04, 0x026, 0x65, 0x5d]),
@@ -154,16 +171,26 @@ mod tests {
     
     #[test]
     fn test_write() {
+        let mut array = [0u8; 16];
+        let write = Write::new(PacketID::unicast(1), ::pro::control_table::GoalPosition::new(0xabcd));
+        for (i, b) in write.serialize().enumerate() {
+            array[i] = b;
+        }
         assert_eq!(
-            Write::new(PacketID::unicast(1), ::pro::control_table::GoalPosition::new(0xabcd)).serialize(),
+            array,
             [0xff, 0xff, 0xfd, 0x00, 0x01, 0x09, 0x00, 0x03, 0x54, 0x02, 0xcd, 0xab, 0x00, 0x00, 0x0d, 0xe5]
         );
     }
 
     #[test]
     fn test_read() {
+        let mut array = [0u8; 14];
+        let read = Read::<::pro::control_table::PresentPosition>::new(PacketID::unicast(1));
+        for (i, b) in read.serialize().enumerate() {
+            array[i] = b;
+        }
         assert_eq!(
-            Read::<::pro::control_table::PresentPosition>::new(PacketID::unicast(1)).serialize(),
+            array,
             [0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x02, 611u16 as u8, (611u16 >> 8) as u8, 0x04, 0x00, 27, 249]
         );
     }

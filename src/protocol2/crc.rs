@@ -1,3 +1,4 @@
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) struct CRC(u16);
 
 impl CRC {
