@@ -36,15 +36,21 @@ impl CRC {
         0x8213, 0x0216, 0x021C, 0x8219, 0x0208, 0x820D, 0x8207, 0x0202
     ];
 
+    pub fn new() -> Self {
+        CRC(0)
+    }
+    
     pub fn calc(data: &[u8]) -> Self {
-        let mut crc: u16 = 0;
-        
-        for element in data {
-            let index = ((crc >> 8) ^ (*element as u16) & 0xff) as usize;
-            crc = (crc << 8) ^ Self::CRC_TABLE[index];
-        }
+        let mut crc = CRC::new();
+        crc.add(data);
+        crc
+    }
 
-        CRC(crc)
+    pub fn add(&mut self, data: &[u8]) {
+        for element in data {
+            let index = ((self.0 >> 8) ^ (*element as u16) & 0xff) as usize;
+            self.0 = (self.0 << 8) ^ Self::CRC_TABLE[index];
+        }
     }
 }
 
