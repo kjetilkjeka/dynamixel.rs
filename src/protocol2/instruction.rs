@@ -128,26 +128,6 @@ impl Status for WriteResponse {
     }
 }
 
-pub struct FactoryReset {
-    id: PacketID,
-}
-
-impl Instruction for FactoryReset {
-    type Array = [u8; 11];
-    const LENGTH: u16 = 11;
-    const INSTRUCTION_VALUE: u8 = 0x06;
-}
-
-pub struct Reboot {
-    id: PacketID,
-}
-
-impl Instruction for Reboot {
-    type Array = [u8; 10];
-    const LENGTH: u16 = 10;
-    const INSTRUCTION_VALUE: u8 = 0x08;
-}
-
 #[cfg(test)]
 mod tests {
     // Using the same test case that can be found at:
