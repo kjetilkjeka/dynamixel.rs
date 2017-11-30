@@ -2,6 +2,9 @@ pub(crate) mod instruction;
 #[macro_use]
 mod control_table;
 mod crc;
+mod bit_stuffer;
+
+use self::bit_stuffer::BitStuffer;
 
 macro_rules! protocol2_servo {
     ($name:ident, $write:path, $read:path) => {
@@ -94,6 +97,7 @@ pub trait Instruction {
             pos: 0,
             length: 10 + Self::PARAMETERS,
             crc: crc::CRC::new(),
+            bit_stuffer: BitStuffer::new(),
             instruction: self,
         };
 
@@ -106,6 +110,7 @@ pub trait Instruction {
             pos: 0,
             length: length,
             crc: crc::CRC::new(),
+            bit_stuffer: BitStuffer::new(),
             instruction: self,
         }
     }
@@ -140,6 +145,7 @@ pub struct Serializer<'a, T: Instruction + 'a> {
     pos: usize,
     length: u16,
     crc: crc::CRC,
+    bit_stuffer: BitStuffer,
     instruction: &'a T,
 }
 
@@ -147,31 +153,42 @@ impl<'a, T: Instruction + 'a> ::lib::iter::Iterator for Serializer<'a, T> {
     type Item = u8;
     
     fn next(&mut self) -> Option<u8> {
-        let next_byte = match self.pos {
-            0 => Some(0xff),
-            1 => Some(0xff),
-            2 => Some(0xfd),
-            3 => Some(0x00),
-            4 => Some(u8::from(self.instruction.id())),
-            5 => Some(self.length as u8),
-            6 => Some((self.length >> 8) as u8),
-            7 => Some(T::INSTRUCTION_VALUE),
-            x if x < 8+T::PARAMETERS as usize => Some(self.instruction.parameter(x-8)),
-            x if x == 8+T::PARAMETERS as usize => Some(u16::from(self.crc) as u8),
-            x if x == 9+T::PARAMETERS as usize => Some((u16::from(self.crc) >> 8) as u8),
-            _ => None,
+        let should_stuff = self.bit_stuffer.stuff_next() && self.pos < 9+T::PARAMETERS as usize;
+        let next_byte = if should_stuff {
+            Some(0xfd)
+        } else {
+            let next_byte = match self.pos {
+                0 => Some(0xff),
+                1 => Some(0xff),
+                2 => Some(0xfd),
+                3 => Some(0x00),
+                4 => Some(u8::from(self.instruction.id())),
+                5 => Some(self.length as u8),
+                6 => Some((self.length >> 8) as u8),
+                7 => Some(T::INSTRUCTION_VALUE),
+                x if x < 8+T::PARAMETERS as usize => Some(self.instruction.parameter(x-8)),
+                x if x == 8+T::PARAMETERS as usize => Some(u16::from(self.crc) as u8),
+                x if x == 9+T::PARAMETERS as usize => Some((u16::from(self.crc) >> 8) as u8),
+                _ => None,
+            };
+            
+
+            next_byte
         };
 
         if self.pos < 8+T::PARAMETERS as usize {
+            self.bit_stuffer = self.bit_stuffer.add_byte(next_byte.unwrap()).unwrap();
             self.crc.add(&[next_byte.unwrap()]);
         }
-        
-        if let Some(_) = next_byte {
+
+        if next_byte.is_some() && !should_stuff {
             self.pos += 1;
         }
+        
         next_byte
     }
 }
+
 
 impl From<::Error> for Error {
     fn from(e: ::Error) -> Error {

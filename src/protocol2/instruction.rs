@@ -180,6 +180,18 @@ mod tests {
             array,
             [0xff, 0xff, 0xfd, 0x00, 0x01, 0x09, 0x00, 0x03, 0x54, 0x02, 0xcd, 0xab, 0x00, 0x00, 0x0d, 0xe5]
         );
+
+        // Test write that needs stuffing
+        let mut array = [0u8; 17];
+        let write = Write::new(PacketID::unicast(1), ::pro::control_table::GoalPosition::new(0xfdffff));
+        for (i, b) in write.serialize().enumerate() {
+            array[i] = b;
+        }
+        assert_eq!(
+            array,
+            [0xff, 0xff, 0xfd, 0x00, 0x01, 0x0a, 0x00, 0x03, 0x54, 0x02, 0xff, 0xff, 0xfd, 0xfd, 0x00, 33, 53]
+        );
+
     }
 
     #[test]
