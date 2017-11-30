@@ -39,9 +39,31 @@ pub trait Servo {
     fn get_position(&mut self) -> Result<f32, Error>;
 }
 
+/// The interface for communicating with dynamixel servos.
 pub trait Interface {
-    fn read(&mut self, &mut [u8]) -> Result<(), Error>;
-    fn write(&mut self, &[u8]) -> Result<(), Error>;
+    /// A blocking/spinning read with timeout.
+    ///
+    /// This function should either:
+    ///
+    /// - read a number of bytes corresponding to `data.len()` into `data` and return `Ok(())`.
+    /// - return `Err(_)`.
+    ///
+    /// If bytes are not received for a given time, a timeout should occur.
+    /// A timeout is signaled by returning `Err(Error::Timeout)`.
+    /// The time between bytes before a timeout occur should be 100ms or more.
+    /// If the timeout is not implemented, a "dead" servo can cause the code to "freeze".
+    fn read(&mut self, data: &mut [u8]) -> Result<(), Error>;
+
+    /// A blocking/spinning write.
+    ///
+    /// This function should either:
+    /// 
+    /// - write every byte in `data` and return `Ok(())`.
+    /// - return `Err(_)`.
+    ///
+    /// After a transmission is started the time between two consecutive bytes need to be less than 100ms.
+    /// This is because the dynamixel actuator recognizes a time of more than 100ms between bytes as a communication problem.
+    fn write(&mut self, data: &[u8]) -> Result<(), Error>;
 }
 
 #[cfg(test)]
