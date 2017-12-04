@@ -199,6 +199,31 @@ mod tests {
     }
 
     #[test]
+    fn test_write_response_byte() {
+        let mut deserializer = Deserializer::<WriteResponse>::new();
+
+        assert_eq!(deserializer.deserialize(&[0xff]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0xff]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0xfd]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x00]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x01]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x04]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x00]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x55]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x00]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0xa1]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x0c]), Ok(DeserializationStatus::Finished));        
+
+        assert!(deserializer.is_finished());
+        
+        assert_eq!(deserializer.build(),
+                   Ok(WriteResponse{})
+        );
+
+    }
+
+
+    #[test]
     fn test_read() {
         let mut array = [0u8; 14];
         let read = Read::<::pro::control_table::PresentPosition>::new(PacketID::unicast(1));
