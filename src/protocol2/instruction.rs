@@ -31,8 +31,8 @@ pub struct Pong {
 }
 
 impl Status for Pong {
-    const LENGTH: u16 = 7;
-
+    const PARAMETERS: u16 = 3;
+    
     fn deserialize_parameters(parameters: &[u8]) -> Self {
         assert_eq!(parameters.len(), 3);
         Pong {
@@ -79,7 +79,7 @@ pub struct ReadResponse<T: ReadRegister> {
 }
 
 impl<T: ReadRegister> Status for ReadResponse<T> {
-    const LENGTH: u16 = 4 + T::SIZE;
+    const PARAMETERS: u16 = T::SIZE;
 
     fn deserialize_parameters(parameters: &[u8]) -> Self{
         ReadResponse{
@@ -127,7 +127,7 @@ pub struct WriteResponse {
 }
 
 impl Status for WriteResponse {
-    const LENGTH: u16 = 4;
+    const PARAMETERS: u16 = 0;
     
     fn deserialize_parameters(parameters: &[u8]) -> Self {
         assert_eq!(parameters.len(), 0);
@@ -161,7 +161,11 @@ mod tests {
     }
     #[test]
     fn test_pong() {
-        assert_eq!(Pong::deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x55, 0x00, 0x06, 0x04, 0x026, 0x65, 0x5d]),
+        let mut deserializer = Deserializer::<Pong>::new();
+
+        assert_eq!(deserializer.deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x55, 0x00, 0x06, 0x04, 0x026, 0x65, 0x5d]), Ok(DeserializationStatus::Finished));
+        
+        assert_eq!(deserializer.build(),
                    Ok(Pong{
                        model_number: 0x0406,
                        fw_version: 0x26,
@@ -209,10 +213,15 @@ mod tests {
 
     #[test]
     fn test_read_response() {
-        assert_eq!(ReadResponse::<::pro::control_table::GoalPosition>::deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x08, 0x00, 0x55, 0x00, 0xa6, 0x00, 0x00, 0x00, 0x8c, 0xc0]),
+        let mut deserializer = Deserializer::<ReadResponse<::pro::control_table::GoalPosition>>::new();
+
+        assert_eq!(deserializer.deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x08, 0x00, 0x55, 0x00, 0xa6, 0x00, 0x00, 0x00, 0x8c, 0xc0]), Ok(DeserializationStatus::Finished));
+        
+        assert_eq!(deserializer.build(),
                    Ok(ReadResponse{
                        value: ::pro::control_table::GoalPosition::new(0x000000a6),
                    })
         );
+
     }
 }

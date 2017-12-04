@@ -21,25 +21,23 @@ macro_rules! protocol2_servo {
                     id: id,
                 }
             }
-
-            fn read_response(&mut self, data: &mut [u8]) -> Result<(), ::Error> {
-                // first read header
-                self.interface.read(&mut data[..7])?;
-
-                // then read rest of message depending on header length
-                let length = data[5] as usize | ((data[6] as usize) << 8);
-                self.interface.read(&mut data[7..7+length])?;
-                Ok(())
-            }
             
             pub fn ping(&mut self) -> Result<::protocol2::instruction::Pong, ::protocol2::Error> {
                 let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::from(self.id));
                 for b in ::protocol2::Instruction::serialize(&ping) {
                     self.interface.write(&[b])?;
                 }
-                let mut received_data = [0u8; 14];
-                self.read_response(&mut received_data)?;
-                <::protocol2::instruction::Pong as ::protocol2::Status>::deserialize(&received_data)
+                
+                let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::Pong>::new();
+                let mut header_data = [0u8; 7];
+                self.interface.read(&mut header_data)?;
+                deserializer.deserialize(&mut header_data)?;
+                let mut received_data = [0u8; 1];
+                while !deserializer.is_finished() {
+                    deserializer.deserialize(&mut received_data)?;
+                }
+                
+                Ok(deserializer.build()?)
             }
             
             pub fn write<W: $write>(&mut self, register: W) -> Result<(), ::protocol2::Error> {
@@ -47,12 +45,19 @@ macro_rules! protocol2_servo {
                 for b in ::protocol2::Instruction::serialize(&write) {
                     self.interface.write(&[b])?;
                 }
-                let mut received_data = [0u8; 11];
-                self.read_response(&mut received_data)?;
-                match <::protocol2::instruction::WriteResponse as ::protocol2::Status>::deserialize(&received_data) {
-                    Ok(::protocol2::instruction::WriteResponse{}) => Ok(()),
-                    Err(e) => Err(e),
+
+                let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::WriteResponse>::new();
+                let mut header_data = [0u8; 7];
+                self.interface.read(&mut header_data)?;
+                deserializer.deserialize(&mut header_data)?;
+                let mut received_data = [0u8; 1];
+                while !deserializer.is_finished() {
+                    self.interface.read(&mut received_data)?;
+                    deserializer.deserialize(&mut received_data)?;
                 }
+                
+                deserializer.build()?;
+                Ok(())
             }
 
             pub fn read<R: $read>(&mut self) -> Result<R, ::protocol2::Error> {
@@ -60,12 +65,18 @@ macro_rules! protocol2_servo {
                 for b in ::protocol2::Instruction::serialize(&read) {
                     self.interface.write(&[b])?;
                 }
-                let mut received_data = [0u8; 15];
-                self.read_response(&mut received_data)?;
-                match <::protocol2::instruction::ReadResponse<R> as ::protocol2::Status>::deserialize(&received_data) {
-                    Ok(::protocol2::instruction::ReadResponse{value: v}) => Ok(v),
-                    Err(e) => Err(e),
+                
+                let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::ReadResponse<R>>::new();
+                let mut header_data = [0u8; 7];
+                self.interface.read(&mut header_data)?;
+                deserializer.deserialize(&mut header_data)?;
+                let mut received_data = [0u8; 1];
+                while !deserializer.is_finished() {
+                    self.interface.read(&mut received_data)?;
+                    deserializer.deserialize(&mut received_data)?;
                 }
+                
+                Ok(deserializer.build()?.value)
             }
         }
     };
@@ -118,28 +129,9 @@ pub trait Instruction {
 }
 
 pub trait Status {
-    const LENGTH: u16;
+    const PARAMETERS: u16;
 
     fn deserialize_parameters(parameters: &[u8]) -> Self;
-    
-    fn deserialize(data: &[u8]) -> Result<Self, Error>
-        where Self: Sized {
-        // check for formating error stuff
-        
-        // check for processing errors
-        let error_number = data[8].get_bits(0..7);
-        if let Some(error) = ProcessingError::decode(error_number).map_err(|()| Error::Format(FormatError::InvalidError(error_number)))? {
-            return Err(Error::Processing(error));
-        }
-
-        let length = data[5] as u16 | ((data[6] as u16) << 8);
-        if length != Self::LENGTH {
-            return Err(Error::Format(FormatError::Length));
-        }
-        
-        let parameters_range = 9..(9 + Self::LENGTH as usize - 4);
-        Ok( Self::deserialize_parameters(&data[parameters_range]) )
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -188,6 +180,114 @@ impl<'a, T: Instruction + 'a> ::lib::iter::Iterator for Serializer<'a, T> {
         }
         
         next_byte
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum DeserializationStatus {
+    Ok,
+    Finished,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Deserializer<T: Status> {
+    finished: bool,
+    pos: usize,
+    id: Option<ServoID>,
+    length_l: Option<u8>,
+    length: Option<u16>,
+    crc_l: Option<u8>,
+    crc_calc: crc::CRC,
+    bit_stuffer: BitStuffer,
+    alert: bool,
+    processing_error: Option<ProcessingError>,
+    parameters: [u8; 6],
+    phantom: ::lib::marker::PhantomData<T>,
+}
+
+impl<T: Status> Deserializer<T> {
+
+    pub fn new() -> Deserializer<T>  {
+        Deserializer{
+            finished: false,
+            pos: 0,
+            id: None,
+            length_l: None,
+            length: None,
+            crc_l: None,
+            crc_calc: crc::CRC::new(),
+            bit_stuffer: BitStuffer::new(),
+            alert: false,
+            processing_error: None,
+            parameters: [0u8; 6],
+            phantom: ::lib::marker::PhantomData{},
+        }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.finished
+    }
+    
+    pub fn build(self) -> Result<T, Error> {
+        if !self.is_finished() {
+            Err(Error::Unfinished)
+        } else if let Some(error) = self.processing_error {
+            Err(Error::Processing(error))
+        } else {
+            Ok(T::deserialize_parameters(&self.parameters[..T::PARAMETERS as usize]))
+        }
+    }
+    
+    pub fn deserialize(&mut self, data: &[u8]) -> Result<DeserializationStatus, FormatError> {
+        for b in data {
+            if self.finished {
+                return Err(FormatError::Length);
+            } else if self.bit_stuffer.stuff_next() && self.pos <= 8+T::PARAMETERS as usize {
+                self.bit_stuffer = self.bit_stuffer.add_byte(*b)?;
+            } else {
+                if self.pos <= 8+T::PARAMETERS as usize {
+                    self.bit_stuffer = self.bit_stuffer.add_byte(*b)?;
+                    self.crc_calc.add(&[*b]);
+                }
+                
+                match self.pos {
+                    0 => if *b != 0xff {return Err(FormatError::Header)},
+                    1 => if *b != 0xff {return Err(FormatError::Header)},
+                    2 => if *b != 0xfd {return Err(FormatError::Header)},
+                    3 => if *b != 0x00 {return Err(FormatError::Header)},
+                    4 => self.id = Some(ServoID::new(*b)),
+                    5 => self.length_l = Some(*b),
+                    6 => self.length = Some( (self.length_l.unwrap() as u16) | ((*b as u16) << 8) ),
+                    7 => if *b != 0x55 {return Err(FormatError::Instruction)},
+                    8 => {
+                        self.alert = b.get_bit(7);
+                        self.processing_error = ProcessingError::decode(b.get_bits(0..7))?;
+                    },
+                    x if x <= 6 + self.length.unwrap() as usize - 2 => self.parameters[x - 9] = *b,
+                    x if x == 6 + self.length.unwrap() as usize - 1 => self.crc_l = Some(*b),
+                    x if x == 6 + self.length.unwrap() as usize - 0 => {
+                        let crc = self.crc_l.unwrap() as u16 | (*b as u16) << 8;
+                        if crc != u16::from(self.crc_calc) {
+                            return Err(FormatError::CRC);
+                        }
+                    },
+                    _ => return Err(FormatError::Length),
+                };
+                
+                self.pos += 1;
+            }
+            
+            
+            if self.length.is_some() && self.length.unwrap() + 7 == self.pos as u16 {
+                self.finished = true;
+            }
+        }
+
+        if self.finished {
+            Ok(DeserializationStatus::Finished)
+        } else {
+            Ok(DeserializationStatus::Ok)
+        }
     }
 }
 
