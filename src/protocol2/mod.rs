@@ -32,8 +32,9 @@ macro_rules! protocol2_servo {
                 let mut header_data = [0u8; 7];
                 self.interface.read(&mut header_data)?;
                 deserializer.deserialize(&mut header_data)?;
-                let mut received_data = [0u8; 1];
+                let mut received_data = [0u8];
                 while !deserializer.is_finished() {
+                    self.interface.read(&mut received_data)?;
                     deserializer.deserialize(&mut received_data)?;
                 }
                 
@@ -50,7 +51,7 @@ macro_rules! protocol2_servo {
                 let mut header_data = [0u8; 7];
                 self.interface.read(&mut header_data)?;
                 deserializer.deserialize(&mut header_data)?;
-                let mut received_data = [0u8; 1];
+                let mut received_data = [0u8];
                 while !deserializer.is_finished() {
                     self.interface.read(&mut received_data)?;
                     deserializer.deserialize(&mut received_data)?;
@@ -70,7 +71,7 @@ macro_rules! protocol2_servo {
                 let mut header_data = [0u8; 7];
                 self.interface.read(&mut header_data)?;
                 deserializer.deserialize(&mut header_data)?;
-                let mut received_data = [0u8; 1];
+                let mut received_data = [0u8];
                 while !deserializer.is_finished() {
                     self.interface.read(&mut received_data)?;
                     deserializer.deserialize(&mut received_data)?;
