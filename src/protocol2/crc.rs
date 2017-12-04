@@ -60,3 +60,16 @@ impl From<CRC> for u16 {
         crc.0
     }
 }
+
+#[cfg(test)]
+mod tests {    
+    use protocol2::crc::*;
+    
+    #[test]
+    fn calculate_checksum_raw() {
+        let data = [0xFF, 0xFF, 0xFD, 0x00, 0x01, 0x03, 0x00, 0x01];
+        
+        let crc = CRC::calc(&data);
+        assert_eq!(u16::from(crc), 0x4E19);
+    }
+}
