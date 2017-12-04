@@ -203,17 +203,21 @@ impl From<::Error> for Error {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
     Timeout,
+    Unfinished,
     Format(FormatError),
     Processing(ProcessingError),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FormatError {
-    ID,
     Header,
-    CRC,
+    ID,
     Length,
+    Instruction,
     InvalidError(u8),
+    CRC,
+    StuffByte,
+    NotFinished,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -227,8 +231,14 @@ pub enum ProcessingError {
     AccessError = 0x07,
 }
 
+impl From<FormatError> for Error {
+    fn from(e: FormatError) -> Error {
+        Error::Format(e)
+    }
+}
+
 impl ProcessingError {
-    fn decode(e: u8) -> Result<Option<ProcessingError>, ()> {
+    fn decode(e: u8) -> Result<Option<ProcessingError>, FormatError> {
         match e {
             0x00 => Ok(None),
             0x01 => Ok(Some(ProcessingError::ResultFail)),
@@ -238,7 +248,7 @@ impl ProcessingError {
             0x05 => Ok(Some(ProcessingError::DataLengthError)),
             0x06 => Ok(Some(ProcessingError::DataLimitError)),
             0x07 => Ok(Some(ProcessingError::AccessError)),
-            _ => Err(()),
+            x => Err(FormatError::InvalidError(x)),
         }
     }
 }

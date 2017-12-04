@@ -7,6 +7,18 @@ pub(crate) enum BitStufferError {
     ExpectedStuffByte,
 }
 
+impl From<BitStufferError> for ::protocol2::FormatError {
+    fn from(e: BitStufferError) -> Self {
+        match e {
+            BitStufferError::ExpectedFirstHeaderByte => ::protocol2::FormatError::Header,
+            BitStufferError::ExpectedSecondHeaderByte => ::protocol2::FormatError::Header,
+            BitStufferError::ExpectedThirdHeaderByte => ::protocol2::FormatError::Header,
+            BitStufferError::ExpectedReservedByte => ::protocol2::FormatError::Header,
+            BitStufferError::ExpectedStuffByte => ::protocol2::FormatError::StuffByte,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum BitStufferState {
     /// Next byte must be first header byte (0xff).
