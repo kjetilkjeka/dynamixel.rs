@@ -4,6 +4,7 @@ mod control_table;
 mod crc;
 mod bit_stuffer;
 
+use bit_field::BitField;
 use self::bit_stuffer::BitStuffer;
 
 macro_rules! protocol2_servo {
@@ -126,7 +127,8 @@ pub trait Status {
         // check for formating error stuff
         
         // check for processing errors
-        if let Some(error) = ProcessingError::decode(data[8]).map_err(|()| Error::Format(FormatError::InvalidError))? {
+        let error_number = data[8].get_bits(0..7);
+        if let Some(error) = ProcessingError::decode(error_number).map_err(|()| Error::Format(FormatError::InvalidError(error_number)))? {
             return Err(Error::Processing(error));
         }
 
@@ -211,7 +213,7 @@ pub enum FormatError {
     Header,
     CRC,
     Length,
-    InvalidError,
+    InvalidError(u8),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
