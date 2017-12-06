@@ -253,6 +253,9 @@ mod tests {
         let mut deserializer = Deserializer::<WriteResponse>::new();
 
         assert_eq!(deserializer.deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x04, 0x00]), Ok(DeserializationStatus::Ok));
+
+        assert_eq!(deserializer.remaining_bytes(), Some(4));
+        
         assert_eq!(deserializer.deserialize(&[0x55]), Ok(DeserializationStatus::Ok));
         assert_eq!(deserializer.deserialize(&[0x00]), Ok(DeserializationStatus::Ok));
         assert_eq!(deserializer.deserialize(&[0xa1]), Ok(DeserializationStatus::Ok));
@@ -282,10 +285,28 @@ mod tests {
     }
 
     #[test]
-    fn test_read_response() {
+    fn test_read_response_slice() {
         let mut deserializer = Deserializer::<ReadResponse<::pro::control_table::GoalPosition>>::new();
 
         assert_eq!(deserializer.deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x08, 0x00, 0x55, 0x00, 0xa6, 0x00, 0x00, 0x00, 0x8c, 0xc0]), Ok(DeserializationStatus::Finished));
+        
+        assert_eq!(deserializer.build(),
+                   Ok(ReadResponse{
+                       value: ::pro::control_table::GoalPosition::new(0x000000a6),
+                   })
+        );
+
+    }
+
+    #[test]
+    fn test_read_response_byte() {
+        let mut deserializer = Deserializer::<ReadResponse<::pro::control_table::GoalPosition>>::new();
+
+        for b in [0xff, 0xff, 0xfd, 0x00, 0x01, 0x08, 0x00, 0x55, 0x00, 0xa6, 0x00, 0x00, 0x00, 0x8c, 0xc0].iter() {
+            deserializer.deserialize(&[*b]).unwrap();
+        }
+
+        assert!(deserializer.is_finished());
         
         assert_eq!(deserializer.build(),
                    Ok(ReadResponse{
