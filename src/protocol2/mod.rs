@@ -293,18 +293,16 @@ impl<T: Status> Deserializer<T> {
 }
 
 
-impl From<::Error> for Error {
-    fn from(e: ::Error) -> Error {
-        match e {
-            ::Error::Timeout => Error::Timeout
-        }
+impl From<::CommunicationError> for Error {
+    fn from(e: ::CommunicationError) -> Error {
+        Error::Communication(e)
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
-    Timeout,
     Unfinished,
+    Communication(::CommunicationError),
     Format(FormatError),
     Processing(ProcessingError),
 }

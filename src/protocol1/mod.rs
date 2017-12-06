@@ -20,7 +20,7 @@ macro_rules! protocol1_servo {
                 }
             }
             
-            fn read_response(&mut self, data: &mut [u8]) -> Result<usize, ::Error> {
+            fn read_response(&mut self, data: &mut [u8]) -> Result<usize, ::CommunicationError> {
                 // first read header
                 self.interface.read(&mut data[..4])?;
 
@@ -104,16 +104,14 @@ pub trait Status {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
-    Timeout,
+    Communication(::CommunicationError),
     Format(FormatError),
     Processing(ProcessingError),
 }
 
-impl From<::Error> for Error {
-    fn from(e: ::Error) -> Error {
-        match e {
-            ::Error::Timeout => Error::Timeout
-        }
+impl From<::CommunicationError> for Error {
+    fn from(e: ::CommunicationError) -> Error {
+        Error::Communication(e)
     }
 }
 
