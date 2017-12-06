@@ -172,6 +172,32 @@ mod tests {
                    })
         );
     }
+
+    #[test]
+    fn test_pong_mixed() {
+        let mut deserializer = Deserializer::<Pong>::new();
+
+        assert_eq!(deserializer.deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x55]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x00]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x18]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0xa9]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x19]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x76]), Ok(DeserializationStatus::Ok));
+        
+        assert!(!deserializer.is_finished());
+        assert_eq!(deserializer.deserialize(&[0x32]), Ok(DeserializationStatus::Finished));        
+        assert!(deserializer.is_finished());
+        
+        assert_eq!(deserializer.build(),
+                   Ok(Pong{
+                       model_number: 0xa918,
+                       fw_version: 0x19,
+                   })
+        );
+
+    }
+
     
     #[test]
     fn test_write() {
@@ -214,6 +240,25 @@ mod tests {
         assert_eq!(deserializer.deserialize(&[0xa1]), Ok(DeserializationStatus::Ok));
         assert_eq!(deserializer.deserialize(&[0x0c]), Ok(DeserializationStatus::Finished));        
 
+        assert!(deserializer.is_finished());
+        
+        assert_eq!(deserializer.build(),
+                   Ok(WriteResponse{})
+        );
+
+    }
+
+    #[test]
+    fn test_write_response_mixed() {
+        let mut deserializer = Deserializer::<WriteResponse>::new();
+
+        assert_eq!(deserializer.deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x04, 0x00]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x55]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0x00]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.deserialize(&[0xa1]), Ok(DeserializationStatus::Ok));
+        
+        assert!(!deserializer.is_finished());
+        assert_eq!(deserializer.deserialize(&[0x0c]), Ok(DeserializationStatus::Finished));        
         assert!(deserializer.is_finished());
         
         assert_eq!(deserializer.build(),
