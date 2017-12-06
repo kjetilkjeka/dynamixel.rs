@@ -24,38 +24,36 @@ macro_rules! protocol2_servo {
             
             pub fn ping(&mut self) -> Result<::protocol2::instruction::Pong, ::protocol2::Error> {
                 let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::from(self.id));
+                let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::Pong>::new();
+                let mut received_data = [0u8; 20];
+                
                 for b in ::protocol2::Instruction::serialize(&ping) {
                     self.interface.write(&[b])?;
                 }
                 
-                let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::Pong>::new();
-                let mut header_data = [0u8; 7];
-                self.interface.read(&mut header_data)?;
-                deserializer.deserialize(&mut header_data)?;
-                let mut received_data = [0u8];
-                while !deserializer.is_finished() {
-                    self.interface.read(&mut received_data)?;
-                    deserializer.deserialize(&mut received_data)?;
-                }
+                self.interface.read(&mut received_data[..7])?;
+                deserializer.deserialize(&mut received_data[..7])?;
+                let remaining_bytes = deserializer.remaining_bytes().unwrap() as usize;
+                self.interface.read(&mut received_data[..remaining_bytes])?;
+                deserializer.deserialize(&mut received_data[..remaining_bytes])?;
                 
                 Ok(deserializer.build()?)
             }
             
             pub fn write<W: $write>(&mut self, register: W) -> Result<(), ::protocol2::Error> {
                 let write = ::protocol2::instruction::Write::new(::protocol2::PacketID::from(self.id), register);
+                let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::WriteResponse>::new();
+                let mut received_data = [0u8; 20];
+                
                 for b in ::protocol2::Instruction::serialize(&write) {
                     self.interface.write(&[b])?;
                 }
 
-                let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::WriteResponse>::new();
-                let mut header_data = [0u8; 7];
-                self.interface.read(&mut header_data)?;
-                deserializer.deserialize(&mut header_data)?;
-                let mut received_data = [0u8];
-                while !deserializer.is_finished() {
-                    self.interface.read(&mut received_data)?;
-                    deserializer.deserialize(&mut received_data)?;
-                }
+                self.interface.read(&mut received_data[..7])?;
+                deserializer.deserialize(&mut received_data[..7])?;
+                let remaining_bytes = deserializer.remaining_bytes().unwrap() as usize;
+                self.interface.read(&mut received_data[..remaining_bytes])?;
+                deserializer.deserialize(&mut received_data[..remaining_bytes])?;
                 
                 deserializer.build()?;
                 Ok(())
@@ -63,19 +61,17 @@ macro_rules! protocol2_servo {
 
             pub fn read<R: $read>(&mut self) -> Result<R, ::protocol2::Error> {
                 let read = ::protocol2::instruction::Read::<R>::new(::protocol2::PacketID::from(self.id));
+                let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::ReadResponse<R>>::new();
+                let mut received_data = [0u8; 20];
                 for b in ::protocol2::Instruction::serialize(&read) {
                     self.interface.write(&[b])?;
                 }
-                
-                let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::ReadResponse<R>>::new();
-                let mut header_data = [0u8; 7];
-                self.interface.read(&mut header_data)?;
-                deserializer.deserialize(&mut header_data)?;
-                let mut received_data = [0u8];
-                while !deserializer.is_finished() {
-                    self.interface.read(&mut received_data)?;
-                    deserializer.deserialize(&mut received_data)?;
-                }
+
+                self.interface.read(&mut received_data[..7])?;
+                deserializer.deserialize(&mut received_data[..7])?;
+                let remaining_bytes = deserializer.remaining_bytes().unwrap() as usize;
+                self.interface.read(&mut received_data[..remaining_bytes])?;
+                deserializer.deserialize(&mut received_data[..remaining_bytes])?;
                 
                 Ok(deserializer.build()?.value)
             }
@@ -193,7 +189,8 @@ pub enum DeserializationStatus {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Deserializer<T: Status> {
     finished: bool,
-    pos: usize,
+    pos: u16,
+    parameter_index: usize,
     id: Option<ServoID>,
     length_l: Option<u8>,
     length: Option<u16>,
@@ -212,6 +209,7 @@ impl<T: Status> Deserializer<T> {
         Deserializer{
             finished: false,
             pos: 0,
+            parameter_index: 0,
             id: None,
             length_l: None,
             length: None,
@@ -228,6 +226,14 @@ impl<T: Status> Deserializer<T> {
     pub fn is_finished(&self) -> bool {
         self.finished
     }
+
+    pub fn remaining_bytes(&self) -> Option<u16> {
+        if let Some(len) = self.length {
+            Some(len - (self.pos - 7))
+        } else {
+            None
+        }
+    }
     
     pub fn build(self) -> Result<T, Error> {
         if !self.is_finished() {
@@ -243,10 +249,11 @@ impl<T: Status> Deserializer<T> {
         for b in data {
             if self.finished {
                 return Err(FormatError::Length);
-            } else if self.bit_stuffer.stuff_next() && self.pos <= 8+T::PARAMETERS as usize {
+            } else if self.bit_stuffer.stuff_next() && self.pos <= 8+T::PARAMETERS {
                 self.bit_stuffer = self.bit_stuffer.add_byte(*b)?;
+                self.pos += 1;
             } else {
-                if self.pos <= 8+T::PARAMETERS as usize {
+                if self.pos <= 8+T::PARAMETERS {
                     self.bit_stuffer = self.bit_stuffer.add_byte(*b)?;
                     self.crc_calc.add(&[*b]);
                 }
@@ -264,9 +271,12 @@ impl<T: Status> Deserializer<T> {
                         self.alert = b.get_bit(7);
                         self.processing_error = ProcessingError::decode(b.get_bits(0..7))?;
                     },
-                    x if x <= 6 + self.length.unwrap() as usize - 2 => self.parameters[x - 9] = *b,
-                    x if x == 6 + self.length.unwrap() as usize - 1 => self.crc_l = Some(*b),
-                    x if x == 6 + self.length.unwrap() as usize - 0 => {
+                    x if x <= 6 + self.length.unwrap() - 2 => {
+                        self.parameters[self.parameter_index] = *b;
+                        self.parameter_index += 1;
+                    },
+                    x if x == 6 + self.length.unwrap() - 1 => self.crc_l = Some(*b),
+                    x if x == 6 + self.length.unwrap() - 0 => {
                         let crc = self.crc_l.unwrap() as u16 | (*b as u16) << 8;
                         if crc != u16::from(self.crc_calc) {
                             return Err(FormatError::CRC);
