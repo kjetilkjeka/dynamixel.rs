@@ -10,6 +10,10 @@ mod lib {
 extern crate embedded_types;
 extern crate bit_field;
 
+#[cfg(feature="serialport")]
+extern crate serialport;
+
+
 #[macro_use]
 pub mod protocol1;
 #[macro_use]
@@ -17,6 +21,8 @@ pub mod protocol2;
 pub mod pro;
 pub mod dynamixel;
 
+#[cfg(feature="serialport")]
+mod serial_impl;
 
 pub trait Servo {
     type OperatingModes;
@@ -38,7 +44,7 @@ pub trait Servo {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CommunicationError {
-    Timeout,
+    TimedOut,
     Other,
 }
 
@@ -67,6 +73,16 @@ pub trait Interface {
     /// After a transmission is started the time between two consecutive bytes need to be less than 100ms.
     /// This is because the dynamixel actuator recognizes a time of more than 100ms between bytes as a communication problem.
     fn write(&mut self, data: &[u8]) -> Result<(), CommunicationError>;
+}
+
+#[cfg(feature="std")]
+impl From<std::io::Error> for CommunicationError {
+    fn from(e: std::io::Error) -> CommunicationError {
+        match e.kind() {
+            std::io::ErrorKind::TimedOut => CommunicationError::TimedOut,
+            _ => CommunicationError::Other,
+        }
+    }
 }
 
 #[cfg(test)]
