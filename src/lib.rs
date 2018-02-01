@@ -48,8 +48,82 @@ pub enum CommunicationError {
     Other,
 }
 
+/// Baud rates the interface should support
+///
+/// May be extended and must not be matched against exhaustively.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum BaudRate {
+    /// Baud rate of 9600
+    Baud9600,
+    
+    /// Baudaud rate of 19 200
+    Baud19200,
+    
+    /// Baudaud rate of 57 600
+    Baud57600,
+    
+    /// Baudaud rate of 115 200
+    Baud115200,
+    
+    /// Baudaud rate of 200 000
+    Baud200000,
+    
+    /// Baudaud rate of 250 000
+    Baud250000,
+    
+    /// Baudaud rate of 400 000
+    Baud400000,
+    
+    /// Baudaud rate of 500 000
+    Baud500000,
+    
+    /// Baudaud rate of 1 000 000
+    Baud1000000,
+    
+    /// Baudaud rate of 2 000 000
+    Baud2000000,
+    
+    /// Baudaud rate of 3 000 000
+    Baud3000000,
+    
+    /// Baudaud rate of 4 000 000
+    Baud4000000,
+    
+    /// Baudaud rate of 4 500 000
+    Baud4500000,
+    
+    /// Baudaud rate of 10 500 000
+    Baud10500000,       
+}
+
+impl From<BaudRate> for u32 {
+    fn from(b: BaudRate) -> u32 {
+        match b {
+            BaudRate::Baud9600 => 9600,
+            BaudRate::Baud19200 => 19200,
+            BaudRate::Baud57600 => 57600,
+            BaudRate::Baud115200 => 115200,
+            BaudRate::Baud200000 => 200_000,
+            BaudRate::Baud250000 => 250_000,
+            BaudRate::Baud400000 => 400_000,
+            BaudRate::Baud500000 => 500_000,
+            BaudRate::Baud1000000 => 1_000_000,
+            BaudRate::Baud2000000 => 2_000_000,
+            BaudRate::Baud3000000 => 3_000_000,
+            BaudRate::Baud4000000 => 4_000_000,
+            BaudRate::Baud4500000 => 4_500_000,
+            BaudRate::Baud10500000 => 10_500_000,       
+        }
+    }
+}
+
 /// The interface for communicating with dynamixel servos.
 pub trait Interface {
+    /// Set the baud rate of the interface
+    ///
+    /// `BaudRate` must not be matched against exhaustively.
+    fn set_baud_rate(&mut self, b: BaudRate) -> Result<(), ()>;
+    
     /// A blocking/spinning read with timeout.
     ///
     /// This function should either:
