@@ -26,16 +26,18 @@ impl Instruction for Ping {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Pong {
-    model_number: u16,
-    fw_version: u8,
+    pub id: ServoID,
+    pub model_number: u16,
+    pub fw_version: u8,
 }
 
 impl Status for Pong {
     const PARAMETERS: u16 = 3;
     
-    fn deserialize_parameters(parameters: &[u8]) -> Self {
+    fn deserialize(id: ServoID, parameters: &[u8]) -> Self {
         assert_eq!(parameters.len(), 3);
         Pong {
+            id: id,
             model_number: (parameters[0] as u16) | (parameters[1] as u16) << 8,
             fw_version: parameters[2],
         }
@@ -75,14 +77,16 @@ impl<T: ReadRegister> Instruction for Read<T> {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct ReadResponse<T: ReadRegister> {
+    pub id: ServoID,
     pub value: T,
 }
 
 impl<T: ReadRegister> Status for ReadResponse<T> {
     const PARAMETERS: u16 = T::SIZE;
 
-    fn deserialize_parameters(parameters: &[u8]) -> Self{
+    fn deserialize(id: ServoID, parameters: &[u8]) -> Self{
         ReadResponse{
+            id: id,
             value: T::deserialize(parameters)
         }
     }
@@ -124,14 +128,15 @@ impl<T: WriteRegister> Instruction for Write<T>{
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct WriteResponse {
+    pub id: ServoID,
 }
 
 impl Status for WriteResponse {
     const PARAMETERS: u16 = 0;
     
-    fn deserialize_parameters(parameters: &[u8]) -> Self {
+    fn deserialize(id: ServoID, parameters: &[u8]) -> Self {
         assert_eq!(parameters.len(), 0);
-        WriteResponse {}
+        WriteResponse {id: id}
     }
 }
 
@@ -170,6 +175,7 @@ mod tests {
         
         assert_eq!(deserializer.build(),
                    Ok(Pong{
+                       id: ServoID::new(0x01),
                        model_number: 0x0406,
                        fw_version: 0x26,
                    })
@@ -193,6 +199,7 @@ mod tests {
         
         assert_eq!(deserializer.build(),
                    Ok(Pong{
+                       id: ServoID::new(0x01),
                        model_number: 0xa918,
                        fw_version: 0x19,
                    })
@@ -238,7 +245,7 @@ mod tests {
         assert!(deserializer.is_finished());
         
         assert_eq!(deserializer.build(),
-                   Ok(WriteResponse{})
+                   Ok(WriteResponse{id: ServoID::new(0x01)})
         );
 
     }
@@ -257,7 +264,7 @@ mod tests {
         assert!(deserializer.is_finished());
         
         assert_eq!(deserializer.build(),
-                   Ok(WriteResponse{})
+                   Ok(WriteResponse{id: ServoID::new(0x01)})
         );
 
     }
@@ -287,6 +294,7 @@ mod tests {
         assert_eq!(deserializer.build(),
                    Ok(ReadResponse{
                        value: ::pro::control_table::GoalPosition::new(0x000000a6),
+                       id: ServoID::new(0x01),
                    })
         );
 
@@ -307,6 +315,7 @@ mod tests {
         assert_eq!(deserializer.build(),
                    Ok(ReadResponse{
                        value: ::pro::control_table::GoalPosition::new(0x000000a6),
+                       id: ServoID::new(0x01),
                    })
         );
 

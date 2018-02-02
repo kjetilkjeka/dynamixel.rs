@@ -128,7 +128,7 @@ pub(crate) trait Instruction {
 pub(crate) trait Status {
     const PARAMETERS: u16;
 
-    fn deserialize_parameters(parameters: &[u8]) -> Self;
+    fn deserialize(id: ServoID, parameters: &[u8]) -> Self;
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -260,7 +260,7 @@ impl<T: Status> BodyDeserializer<T> {
         } else if let Some(error) = self.processing_error {
             Err(Error::Processing(error))
         } else {
-            Ok(T::deserialize_parameters(&self.parameters[..T::PARAMETERS as usize]))
+            Ok(T::deserialize(self.id, &self.parameters[..T::PARAMETERS as usize]))
         }
     }
     
