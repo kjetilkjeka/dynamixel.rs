@@ -44,7 +44,7 @@ macro_rules! protocol1_servo {
                 let mut received_data = [0u8; 11];
                 let length = self.read_response(&mut received_data)?;
                 match <::protocol1::instruction::WriteDataResponse as ::protocol1::Status>::deserialize(&received_data[0..length]) {
-                    Ok(::protocol1::instruction::WriteDataResponse{}) => Ok(()),
+                    Ok(::protocol1::instruction::WriteDataResponse{id: _}) => Ok(()),
                     Err(e) => Err(e),
                 }
             }
@@ -81,7 +81,7 @@ pub trait Instruction {
 pub trait Status {
     const LENGTH: u8;
 
-    fn deserialize_parameters(parameters: &[u8]) -> Self;
+    fn deserialize_parameters(id: ServoID, parameters: &[u8]) -> Self;
     
     fn deserialize(data: &[u8]) -> Result<Self, Error>
         where Self: Sized {
@@ -96,9 +96,11 @@ pub trait Status {
         if length != Self::LENGTH {
             return Err(Error::Format(FormatError::Length));
         }
+
+        let id = ServoID::new(data[2]);
         
         let parameters_range = 4..(4 + Self::LENGTH as usize - 2);
-        Ok( Self::deserialize_parameters(&data[parameters_range]) )
+        Ok( Self::deserialize_parameters(id, &data[parameters_range]) )
     }
 }
 

@@ -1,7 +1,8 @@
 use protocol1::*;
+use protocol1::ServoID;
 
 pub struct Ping {
-    id: PacketID,
+    pub id: PacketID,
 }
 
 impl Ping {
@@ -23,21 +24,23 @@ impl Instruction for Ping {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Pong {}
+pub struct Pong {
+    pub id: ServoID,
+}
 
 impl Status for Pong {
     const LENGTH: u8 = 2;
 
-    fn deserialize_parameters(parameters: &[u8]) -> Self {
+    fn deserialize_parameters(id: ServoID, parameters: &[u8]) -> Self {
         assert_eq!(parameters.len(), 0);
-        Pong {}
+        Pong {id: id}
     }
 }
 
 
 pub struct WriteData<T: WriteRegister> {
-    id: PacketID,
-    data: T,
+    pub id: PacketID,
+    pub data: T,
 }
 
 impl<T: WriteRegister> WriteData<T> {
@@ -63,14 +66,16 @@ impl<T: WriteRegister> Instruction for WriteData<T>{
     }
 }
 
-pub struct WriteDataResponse {}
+pub struct WriteDataResponse {
+    pub id: ServoID,
+}
 
 impl Status for WriteDataResponse {
     const LENGTH: u8 = 2;
     
-    fn deserialize_parameters(parameters: &[u8]) -> Self {
+    fn deserialize_parameters(id: ServoID, parameters: &[u8]) -> Self {
         assert_eq!(parameters.len(), 0);
-        WriteDataResponse {}
+        WriteDataResponse {id: id}
     }
 }
 
@@ -93,7 +98,7 @@ mod tests {
     #[test]
     fn test_pong() {
         assert_eq!(Pong::deserialize(&[0xff, 0xff, 0x01, 0x02, 0x00, 0x00]), //todo: fix checksum
-                   Ok(Pong{})
+                   Ok(Pong{id: ServoID::new(1)})
         );
     }
     
