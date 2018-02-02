@@ -45,7 +45,7 @@ pub trait Servo {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CommunicationError {
     TimedOut,
-    UnsupportedBaud,
+    UnsupportedBaud(BaudRate),
     Other,
 }
 
