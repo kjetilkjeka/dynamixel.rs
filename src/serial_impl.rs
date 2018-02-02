@@ -10,8 +10,11 @@ use {
 };
 
 impl From<serialport::Error> for CommunicationError {
-    fn from(_err: serialport::Error) -> CommunicationError {
-        CommunicationError::Other
+    fn from(e: serialport::Error) -> CommunicationError {
+        match e {
+            serialport::Error{kind: serialport::ErrorKind::Io(std::io::ErrorKind::TimedOut), ..} => CommunicationError::TimedOut,
+            _ => CommunicationError::Other,
+        }
     }
 }
 
