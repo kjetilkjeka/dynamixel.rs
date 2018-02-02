@@ -4,6 +4,9 @@ mod control_table;
 mod crc;
 mod bit_stuffer;
 
+use BaudRate;
+use CommunicationError;
+
 use bit_field::BitField;
 use self::bit_stuffer::BitStuffer;
 
@@ -40,6 +43,41 @@ pub(crate) fn read_status<I: ::Interface, T: Status>(interface: &mut I) -> Resul
     }
     
     Ok(deserializer.build()?)
+}
+
+/// Enumerate all protocol 2 servos connected to the interface
+#[cfg(feature="std")]
+pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Error> {
+    let mut servos = Vec::new();
+
+    for b in BaudRate::variants() {
+
+        if let Err(e) = interface.set_baud_rate(*b) {
+            warn!(target: "protocol2", "not able to enumerate devices on baudrate: {}", u32::from(*b));
+        }
+
+        let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::Broadcast);
+        write_instruction(interface, ping)?;
+
+        loop {
+            match read_status::<I, instruction::Pong>(interface) {
+                Ok(pong) => servos.push(
+                    ServoInfo{
+                        baud_rate: *b,
+                        model_number: pong.model_number,
+                        fw_version: pong.fw_version,
+                        id: pong.id,
+                    }
+                ),
+                Err(Error::Communication(CommunicationError::TimedOut)) => break,
+                Err(e) => {
+                    warn!(target: "protocol2", "received error: {:?} when waiting for enumeration on baud: {}", e, u32::from(*b));
+                    break;
+                },
+            };
+        }   
+    }
+    Ok(servos)
 }
 
 macro_rules! protocol2_servo {
@@ -295,6 +333,14 @@ impl<T: Status> BodyDeserializer<T> {
             Ok(DeserializationStatus::Ok)
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct ServoInfo {
+    pub baud_rate: ::BaudRate,
+    pub model_number: u16,
+    pub fw_version: u8,
+    pub id: ServoID,
 }
 
 
