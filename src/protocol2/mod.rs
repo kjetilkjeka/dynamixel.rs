@@ -93,7 +93,7 @@ pub trait WriteRegister: Register {
     fn serialize(&self) -> [u8; 4];
 }
 
-pub trait Instruction {
+pub(crate) trait Instruction {
     const PARAMETERS: u16;
     const INSTRUCTION_VALUE: u8;
 
@@ -125,14 +125,14 @@ pub trait Instruction {
     }
 }
 
-pub trait Status {
+pub(crate) trait Status {
     const PARAMETERS: u16;
 
     fn deserialize_parameters(parameters: &[u8]) -> Self;
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Serializer<'a, T: Instruction + 'a> {
+pub(crate) struct Serializer<'a, T: Instruction + 'a> {
     pos: usize,
     length: u16,
     crc: crc::CRC,
@@ -181,13 +181,13 @@ impl<'a, T: Instruction + 'a> ::lib::iter::Iterator for Serializer<'a, T> {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum DeserializationStatus {
+pub(crate) enum DeserializationStatus {
     Ok,
     Finished,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Deserializer<T: Status> {
+pub(crate) struct Deserializer<T: Status> {
     phantom: ::lib::marker::PhantomData<T>,
 }
 
@@ -231,7 +231,7 @@ impl<T: Status> Deserializer<T> {
 }
     
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct BodyDeserializer<T: Status> {
+pub(crate) struct BodyDeserializer<T: Status> {
     remaining_bytes: u16,
     parameter_index: usize,
     id: ServoID,
