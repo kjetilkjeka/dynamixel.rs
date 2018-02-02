@@ -7,18 +7,20 @@ mod bit_stuffer;
 use bit_field::BitField;
 use self::bit_stuffer::BitStuffer;
 
+
 pub fn ping<I: ::Interface>(interface: &mut I, id: PacketID) -> Result<instruction::Pong, Error> {
     let ping = ::protocol2::instruction::Ping::new(id);
-    let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::Pong>::new();
+    let deserializer = ::protocol2::Deserializer::<::protocol2::instruction::Pong>::new();
+    let mut received_header = [0u8; 9];
     let mut received_data = [0u8; 20];
     
     for b in ::protocol2::Instruction::serialize(&ping) {
         interface.write(&[b])?;
     }
     
-    interface.read(&mut received_data[..7])?;
-    deserializer.deserialize(&mut received_data[..7])?;
-    let remaining_bytes = deserializer.remaining_bytes().unwrap() as usize;
+    interface.read(&mut received_header)?;
+    let mut deserializer = deserializer.deserialize_header(received_header)?;
+    let remaining_bytes = deserializer.remaining_bytes() as usize;
     interface.read(&mut received_data[..remaining_bytes])?;
     deserializer.deserialize(&mut received_data[..remaining_bytes])?;
     
@@ -27,16 +29,17 @@ pub fn ping<I: ::Interface>(interface: &mut I, id: PacketID) -> Result<instructi
             
 pub fn write<W: WriteRegister, I: ::Interface>(interface: &mut I, id: PacketID, register: W) -> Result<(), Error> {
     let write = ::protocol2::instruction::Write::new(id, register);
-    let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::WriteResponse>::new();
+    let deserializer = ::protocol2::Deserializer::<::protocol2::instruction::WriteResponse>::new();
+    let mut received_header = [0u8; 9];
     let mut received_data = [0u8; 20];
     
     for b in ::protocol2::Instruction::serialize(&write) {
         interface.write(&[b])?;
     }
 
-    interface.read(&mut received_data[..7])?;
-    deserializer.deserialize(&mut received_data[..7])?;
-    let remaining_bytes = deserializer.remaining_bytes().unwrap() as usize;
+    interface.read(&mut received_header)?;
+    let mut deserializer = deserializer.deserialize_header(received_header)?;
+    let remaining_bytes = deserializer.remaining_bytes() as usize;
     interface.read(&mut received_data[..remaining_bytes])?;
     deserializer.deserialize(&mut received_data[..remaining_bytes])?;
     
@@ -46,15 +49,16 @@ pub fn write<W: WriteRegister, I: ::Interface>(interface: &mut I, id: PacketID, 
 
 pub fn read<R: ReadRegister, I: ::Interface>(interface: &mut I, id: PacketID) -> Result<R, Error> {
     let read = ::protocol2::instruction::Read::<R>::new(::protocol2::PacketID::from(id));
-    let mut deserializer = ::protocol2::Deserializer::<::protocol2::instruction::ReadResponse<R>>::new();
+    let deserializer = ::protocol2::Deserializer::<::protocol2::instruction::ReadResponse<R>>::new();
+    let mut received_header = [0u8; 9];
     let mut received_data = [0u8; 20];
     for b in ::protocol2::Instruction::serialize(&read) {
         interface.write(&[b])?;
     }
 
-    interface.read(&mut received_data[..7])?;
-    deserializer.deserialize(&mut received_data[..7])?;
-    let remaining_bytes = deserializer.remaining_bytes().unwrap() as usize;
+    interface.read(&mut received_header)?;
+    let mut deserializer = deserializer.deserialize_header(received_header)?;
+    let remaining_bytes = deserializer.remaining_bytes() as usize;
     interface.read(&mut received_data[..remaining_bytes])?;
     deserializer.deserialize(&mut received_data[..remaining_bytes])?;
     
@@ -201,12 +205,53 @@ pub enum DeserializationStatus {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Deserializer<T: Status> {
-    finished: bool,
-    pos: u16,
+    phantom: ::lib::marker::PhantomData<T>,
+}
+
+impl<T: Status> Deserializer<T> {
+    fn new() -> Self {
+        Deserializer {
+            phantom: ::lib::marker::PhantomData{},
+        }
+    }
+    
+    fn deserialize_header(self, data: [u8; 9]) -> Result<BodyDeserializer<T>, FormatError> {
+        if data[0] != 0xff {return Err(FormatError::Header)};
+        if data[1] != 0xff {return Err(FormatError::Header)};
+        if data[2] != 0xfd {return Err(FormatError::Header)};
+        if data[3] != 0x00 {return Err(FormatError::Header)};
+        if data[7] != 0x55 {return Err(FormatError::Instruction)};
+
+        let length = data[5] as u16 | (data[6] as u16) << 8;
+        
+        let mut crc = crc::CRC::new();
+        crc.add(&data);
+        
+        let mut bit_stuffer = BitStuffer::new();
+        for b in data.iter() {
+            bit_stuffer = bit_stuffer.add_byte(*b)?;
+        }
+        
+        Ok(BodyDeserializer {
+            parameter_index: 0,
+            remaining_bytes: length-2,
+            id: ServoID::new(data[4]),
+            crc_l: None,
+            crc_calc: crc,
+            bit_stuffer: bit_stuffer,
+            alert: data[8].get_bit(7),
+            processing_error: ProcessingError::decode(data[8].get_bits(0..7))?,
+            parameters: [0u8; 6],
+            phantom: ::lib::marker::PhantomData{},
+        })
+    }
+}
+    
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct BodyDeserializer<T: Status> {
+    remaining_bytes: u16,
     parameter_index: usize,
-    id: Option<ServoID>,
-    length_l: Option<u8>,
-    length: Option<u16>,
+    id: ServoID,
     crc_l: Option<u8>,
     crc_calc: crc::CRC,
     bit_stuffer: BitStuffer,
@@ -216,36 +261,14 @@ pub struct Deserializer<T: Status> {
     phantom: ::lib::marker::PhantomData<T>,
 }
 
-impl<T: Status> Deserializer<T> {
-
-    pub fn new() -> Deserializer<T>  {
-        Deserializer{
-            finished: false,
-            pos: 0,
-            parameter_index: 0,
-            id: None,
-            length_l: None,
-            length: None,
-            crc_l: None,
-            crc_calc: crc::CRC::new(),
-            bit_stuffer: BitStuffer::new(),
-            alert: false,
-            processing_error: None,
-            parameters: [0u8; 6],
-            phantom: ::lib::marker::PhantomData{},
-        }
-    }
+impl<T: Status> BodyDeserializer<T> {
 
     pub fn is_finished(&self) -> bool {
-        self.finished
+        self.remaining_bytes == 0
     }
-
-    pub fn remaining_bytes(&self) -> Option<u16> {
-        if let Some(len) = self.length {
-            Some(len - (self.pos - 7))
-        } else {
-            None
-        }
+    
+    pub fn remaining_bytes(&self) -> u16 {
+        self.remaining_bytes
     }
     
     pub fn build(self) -> Result<T, Error> {
@@ -260,54 +283,30 @@ impl<T: Status> Deserializer<T> {
     
     pub fn deserialize(&mut self, data: &[u8]) -> Result<DeserializationStatus, FormatError> {
         for b in data {
-            if self.finished {
-                return Err(FormatError::Length);
-            } else if self.bit_stuffer.stuff_next() && self.pos <= 8+T::PARAMETERS {
+            if self.bit_stuffer.stuff_next() && self.remaining_bytes > 2 {
                 self.bit_stuffer = self.bit_stuffer.add_byte(*b)?;
-                self.pos += 1;
-            } else {
-                if self.pos <= 8+T::PARAMETERS {
-                    self.bit_stuffer = self.bit_stuffer.add_byte(*b)?;
-                    self.crc_calc.add(&[*b]);
+                self.remaining_bytes -= 1;
+            } else if self.remaining_bytes > 2 {
+                self.bit_stuffer = self.bit_stuffer.add_byte(*b)?;
+                self.crc_calc.add(&[*b]);
+                self.parameters[self.parameter_index] = *b;
+                self.parameter_index += 1;
+                self.remaining_bytes -= 1;
+            } else if self.remaining_bytes == 2 {
+                self.crc_l = Some(*b);
+                self.remaining_bytes -= 1;
+            } else if self.remaining_bytes == 1 {
+                let crc = self.crc_l.unwrap() as u16 | (*b as u16) << 8;
+                if crc != u16::from(self.crc_calc) {
+                    return Err(FormatError::CRC);
                 }
-                
-                match self.pos {
-                    0 => if *b != 0xff {return Err(FormatError::Header)},
-                    1 => if *b != 0xff {return Err(FormatError::Header)},
-                    2 => if *b != 0xfd {return Err(FormatError::Header)},
-                    3 => if *b != 0x00 {return Err(FormatError::Header)},
-                    4 => self.id = Some(ServoID::new(*b)),
-                    5 => self.length_l = Some(*b),
-                    6 => self.length = Some( (self.length_l.unwrap() as u16) | ((*b as u16) << 8) ),
-                    7 => if *b != 0x55 {return Err(FormatError::Instruction)},
-                    8 => {
-                        self.alert = b.get_bit(7);
-                        self.processing_error = ProcessingError::decode(b.get_bits(0..7))?;
-                    },
-                    x if x <= 6 + self.length.unwrap() - 2 => {
-                        self.parameters[self.parameter_index] = *b;
-                        self.parameter_index += 1;
-                    },
-                    x if x == 6 + self.length.unwrap() - 1 => self.crc_l = Some(*b),
-                    x if x == 6 + self.length.unwrap() - 0 => {
-                        let crc = self.crc_l.unwrap() as u16 | (*b as u16) << 8;
-                        if crc != u16::from(self.crc_calc) {
-                            return Err(FormatError::CRC);
-                        }
-                    },
-                    _ => return Err(FormatError::Length),
-                };
-                
-                self.pos += 1;
-            }
-            
-            
-            if self.length.is_some() && self.length.unwrap() + 7 == self.pos as u16 {
-                self.finished = true;
+                self.remaining_bytes -= 1;
+            } else {
+                return Err(FormatError::Length);
             }
         }
-
-        if self.finished {
+        
+        if self.remaining_bytes == 0 {
             Ok(DeserializationStatus::Finished)
         } else {
             Ok(DeserializationStatus::Ok)

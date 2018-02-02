@@ -161,9 +161,12 @@ mod tests {
     }
     #[test]
     fn test_pong() {
-        let mut deserializer = Deserializer::<Pong>::new();
+        let mut deserializer = Deserializer::<Pong>::new()
+            .deserialize_header([0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x55, 0x00])
+            .unwrap();
 
-        assert_eq!(deserializer.deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x55, 0x00, 0x06, 0x04, 0x026, 0x65, 0x5d]), Ok(DeserializationStatus::Finished));
+        assert_eq!(deserializer.remaining_bytes(), 5);
+        assert_eq!(deserializer.deserialize(&[0x06, 0x04, 0x026, 0x65, 0x5d]), Ok(DeserializationStatus::Finished));
         
         assert_eq!(deserializer.build(),
                    Ok(Pong{
@@ -175,11 +178,10 @@ mod tests {
 
     #[test]
     fn test_pong_mixed() {
-        let mut deserializer = Deserializer::<Pong>::new();
-
-        assert_eq!(deserializer.deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0x55]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0x00]), Ok(DeserializationStatus::Ok));
+        let mut deserializer = Deserializer::<Pong>::new()
+            .deserialize_header([0xff, 0xff, 0xfd, 0x00, 0x01, 0x07, 0x00, 0x55, 0x00])
+            .unwrap();
+    
         assert_eq!(deserializer.deserialize(&[0x18]), Ok(DeserializationStatus::Ok));
         assert_eq!(deserializer.deserialize(&[0xa9]), Ok(DeserializationStatus::Ok));
         assert_eq!(deserializer.deserialize(&[0x19]), Ok(DeserializationStatus::Ok));
@@ -226,19 +228,12 @@ mod tests {
 
     #[test]
     fn test_write_response_byte() {
-        let mut deserializer = Deserializer::<WriteResponse>::new();
-
-        assert_eq!(deserializer.deserialize(&[0xff]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0xff]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0xfd]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0x00]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0x01]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0x04]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0x00]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0x55]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0x00]), Ok(DeserializationStatus::Ok));
+        let mut deserializer = Deserializer::<WriteResponse>::new()
+            .deserialize_header([0xff, 0xff, 0xfd, 0x00, 0x01, 0x04, 0x00, 0x55, 0x00])
+            .unwrap();
+        
         assert_eq!(deserializer.deserialize(&[0xa1]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0x0c]), Ok(DeserializationStatus::Finished));        
+        assert_eq!(deserializer.deserialize(&[0x0c]), Ok(DeserializationStatus::Finished));     
 
         assert!(deserializer.is_finished());
         
@@ -250,14 +245,11 @@ mod tests {
 
     #[test]
     fn test_write_response_mixed() {
-        let mut deserializer = Deserializer::<WriteResponse>::new();
-
-        assert_eq!(deserializer.deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x04, 0x00]), Ok(DeserializationStatus::Ok));
-
-        assert_eq!(deserializer.remaining_bytes(), Some(4));
+        let mut deserializer = Deserializer::<WriteResponse>::new()
+            .deserialize_header([0xff, 0xff, 0xfd, 0x00, 0x01, 0x04, 0x00, 0x55, 0x00])
+            .unwrap();
         
-        assert_eq!(deserializer.deserialize(&[0x55]), Ok(DeserializationStatus::Ok));
-        assert_eq!(deserializer.deserialize(&[0x00]), Ok(DeserializationStatus::Ok));
+        assert_eq!(deserializer.remaining_bytes(), 2);
         assert_eq!(deserializer.deserialize(&[0xa1]), Ok(DeserializationStatus::Ok));
         
         assert!(!deserializer.is_finished());
@@ -286,9 +278,11 @@ mod tests {
 
     #[test]
     fn test_read_response_slice() {
-        let mut deserializer = Deserializer::<ReadResponse<::pro::control_table::GoalPosition>>::new();
+        let mut deserializer = Deserializer::<ReadResponse<::pro::control_table::GoalPosition>>::new()
+            .deserialize_header([0xff, 0xff, 0xfd, 0x00, 0x01, 0x08, 0x00, 0x55, 0x00])
+            .unwrap();
 
-        assert_eq!(deserializer.deserialize(&[0xff, 0xff, 0xfd, 0x00, 0x01, 0x08, 0x00, 0x55, 0x00, 0xa6, 0x00, 0x00, 0x00, 0x8c, 0xc0]), Ok(DeserializationStatus::Finished));
+        assert_eq!(deserializer.deserialize(&[0xa6, 0x00, 0x00, 0x00, 0x8c, 0xc0]), Ok(DeserializationStatus::Finished));
         
         assert_eq!(deserializer.build(),
                    Ok(ReadResponse{
@@ -300,9 +294,11 @@ mod tests {
 
     #[test]
     fn test_read_response_byte() {
-        let mut deserializer = Deserializer::<ReadResponse<::pro::control_table::GoalPosition>>::new();
+        let mut deserializer = Deserializer::<ReadResponse<::pro::control_table::GoalPosition>>::new()
+            .deserialize_header([0xff, 0xff, 0xfd, 0x00, 0x01, 0x08, 0x00, 0x55, 0x00])
+            .unwrap();
 
-        for b in [0xff, 0xff, 0xfd, 0x00, 0x01, 0x08, 0x00, 0x55, 0x00, 0xa6, 0x00, 0x00, 0x00, 0x8c, 0xc0].iter() {
+        for b in [0xa6, 0x00, 0x00, 0x00, 0x8c, 0xc0].iter() {
             deserializer.deserialize(&[*b]).unwrap();
         }
 
