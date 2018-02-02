@@ -45,6 +45,7 @@ pub trait Servo {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CommunicationError {
     TimedOut,
+    UnsupportedBaud,
     Other,
 }
 
@@ -117,12 +118,32 @@ impl From<BaudRate> for u32 {
     }
 }
 
+impl BaudRate {
+    fn variants() -> &'static [Self] {
+        &[BaudRate::Baud9600,
+          BaudRate::Baud19200,
+          BaudRate::Baud57600,
+          BaudRate::Baud115200,
+          BaudRate::Baud200000,
+          BaudRate::Baud250000,
+          BaudRate::Baud400000,
+          BaudRate::Baud500000,
+          BaudRate::Baud1000000,
+          BaudRate::Baud2000000,
+          BaudRate::Baud3000000,
+          BaudRate::Baud4000000,
+          BaudRate::Baud4500000,
+          BaudRate::Baud10500000,
+        ]
+    }
+}
+
 /// The interface for communicating with dynamixel servos.
 pub trait Interface {
     /// Set the baud rate of the interface
     ///
     /// `BaudRate` must not be matched against exhaustively.
-    fn set_baud_rate(&mut self, b: BaudRate) -> Result<(), ()>;
+    fn set_baud_rate(&mut self, b: BaudRate) -> Result<(), CommunicationError>;
     
     /// A blocking/spinning read with timeout.
     ///

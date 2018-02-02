@@ -33,10 +33,10 @@ impl From<BaudRate> for serialport::BaudRate {
 }
 
 impl Interface for std::boxed::Box<serialport::SerialPort> {
-    fn set_baud_rate(&mut self, b: BaudRate) -> Result<(), ()> {
+    fn set_baud_rate(&mut self, b: BaudRate) -> Result<(), CommunicationError> {
         match serialport::SerialPort::set_baud_rate(self.deref_mut(), serialport::BaudRate::from(b)) {
             Ok(_) => Ok(()),
-            Err(_) => Err(()),
+            Err(_) => Err(CommunicationError::UnsupportedBaud),
         }
     }
     
