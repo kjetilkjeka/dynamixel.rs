@@ -44,12 +44,12 @@ impl Interface for std::boxed::Box<serialport::SerialPort> {
     }
     
     fn read(&mut self, data: &mut [u8]) -> Result<(), CommunicationError> {
-        self.set_timeout(std::time::Duration::new(0, 1000000000))?;
+        self.set_timeout(std::time::Duration::new(0, 100000000))?;
         Ok(std::io::Read::read_exact(self, data)?)
     }
 
     fn write(&mut self, data: &[u8]) -> Result<(), CommunicationError> {
-        self.set_timeout(std::time::Duration::new(0, 1000000000))?;
+        self.set_timeout(std::time::Duration::new(0, 100000000))?;
         Ok(std::io::Write::write_all(self, data)?)
     }
 }
