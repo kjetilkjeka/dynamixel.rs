@@ -1,9 +1,58 @@
+use BaudRate;
+use CommunicationError;
+
 use bit_field::BitField;
 
 #[macro_use]
 mod control_table;
 pub(crate) mod instruction;
 mod checksum;
+
+/// Enumerate all protocol 1 servos connected to the interface
+#[cfg(feature="std")]
+pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Error> {
+    let mut servos = Vec::new();
+
+    for b in BaudRate::variants() {
+
+        if let Err(e) = interface.set_baud_rate(*b) {
+            warn!(target: "protocol1", "not able to enumerate devices on baudrate: {}", u32::from(*b));
+        }
+
+        let ping = ::protocol1::instruction::Ping::new(PacketID::Broadcast);
+        interface.write(&::protocol1::Instruction::serialize(&ping))?;
+
+        loop {
+            let mut received_data = [0u8; 14];
+            // first read header
+            if let Err(e) = interface.read(&mut received_data[..4]) {
+                warn!(target: "protocol1", "received error: {:?} when waiting for enumeration on baud: {}", e, u32::from(*b));
+            }
+
+            // then read rest of message depending on header length
+            let length = received_data[3] as usize;
+            interface.read(&mut received_data[4..4+length])?;
+
+            match <::protocol1::instruction::Pong as ::protocol1::Status>::deserialize(&received_data) {
+                Ok(pong) => servos.push(
+                    ServoInfo{
+                        baud_rate: *b,
+                        model_number: 0,
+                        fw_version: 0,
+                        id: pong.id,
+                    }
+                ),
+                Err(Error::Communication(CommunicationError::TimedOut)) => break,
+                Err(e) => {
+                    warn!(target: "protocol1", "received error: {:?} when waiting for enumeration on baud: {}", e, u32::from(*b));
+                    break;
+                },
+            };
+        }   
+    }
+    Ok(servos)
+}
+
 
 macro_rules! protocol1_servo {
     ($name:ident, $write:path, $read:path) => {
@@ -104,6 +153,15 @@ pub trait Status {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ServoInfo {
+    baud_rate: ::BaudRate,
+    model_number: u16,
+    fw_version: u8,
+    id: ServoID,
+}
+
+   
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
     Communication(::CommunicationError),
