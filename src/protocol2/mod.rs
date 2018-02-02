@@ -7,64 +7,40 @@ mod bit_stuffer;
 use bit_field::BitField;
 use self::bit_stuffer::BitStuffer;
 
-
-pub fn ping<I: ::Interface>(interface: &mut I, id: PacketID) -> Result<instruction::Pong, Error> {
-    let ping = ::protocol2::instruction::Ping::new(id);
-    let deserializer = ::protocol2::Deserializer::<::protocol2::instruction::Pong>::new();
-    let mut received_header = [0u8; 9];
-    let mut received_data = [0u8; 20];
-    
-    for b in ::protocol2::Instruction::serialize(&ping) {
-        interface.write(&[b])?;
+/// Write the instruction on the interface
+pub(crate) fn write_instruction<I: ::Interface, T: Instruction>(interface: &mut I, instruction: T) -> Result<(), Error> {
+    for b in instruction.serialize() {
+        interface.write(&[b])?
     }
-    
-    interface.read(&mut received_header)?;
-    let mut deserializer = deserializer.deserialize_header(received_header)?;
-    let remaining_bytes = deserializer.remaining_bytes() as usize;
-    interface.read(&mut received_data[..remaining_bytes])?;
-    deserializer.deserialize(&mut received_data[..remaining_bytes])?;
-    
-    Ok(deserializer.build()?)
-}
-            
-pub fn write<W: WriteRegister, I: ::Interface>(interface: &mut I, id: PacketID, register: W) -> Result<(), Error> {
-    let write = ::protocol2::instruction::Write::new(id, register);
-    let deserializer = ::protocol2::Deserializer::<::protocol2::instruction::WriteResponse>::new();
-    let mut received_header = [0u8; 9];
-    let mut received_data = [0u8; 20];
-    
-    for b in ::protocol2::Instruction::serialize(&write) {
-        interface.write(&[b])?;
-    }
-
-    interface.read(&mut received_header)?;
-    let mut deserializer = deserializer.deserialize_header(received_header)?;
-    let remaining_bytes = deserializer.remaining_bytes() as usize;
-    interface.read(&mut received_data[..remaining_bytes])?;
-    deserializer.deserialize(&mut received_data[..remaining_bytes])?;
-    
-    deserializer.build()?;
     Ok(())
 }
 
-pub fn read<R: ReadRegister, I: ::Interface>(interface: &mut I, id: PacketID) -> Result<R, Error> {
-    let read = ::protocol2::instruction::Read::<R>::new(::protocol2::PacketID::from(id));
-    let deserializer = ::protocol2::Deserializer::<::protocol2::instruction::ReadResponse<R>>::new();
-    let mut received_header = [0u8; 9];
-    let mut received_data = [0u8; 20];
-    for b in ::protocol2::Instruction::serialize(&read) {
-        interface.write(&[b])?;
-    }
-
-    interface.read(&mut received_header)?;
-    let mut deserializer = deserializer.deserialize_header(received_header)?;
-    let remaining_bytes = deserializer.remaining_bytes() as usize;
-    interface.read(&mut received_data[..remaining_bytes])?;
-    deserializer.deserialize(&mut received_data[..remaining_bytes])?;
+/// Read a status from the interface
+///
+/// If no instructions have been sent, there will not be any status to read
+pub(crate) fn read_status<I: ::Interface, T: Status>(interface: &mut I) -> Result<T, Error> {
+    let mut header = [0u8; 9];
+    interface.read(&mut header)?;
     
-    Ok(deserializer.build()?.value)
-}
+    let mut deserializer = Deserializer::<T>::new()
+        .deserialize_header(header)?;
 
+    let mut body = [0u8; 10];
+
+    loop {
+        let remaining_bytes = deserializer.remaining_bytes() as usize;
+        if remaining_bytes > 10 {
+            interface.read(&mut body)?;
+            deserializer.deserialize(&body)?;
+        } else {
+            interface.read(&mut body[..remaining_bytes])?;
+            deserializer.deserialize(&body[..remaining_bytes])?;
+            break;
+        }
+    }
+    
+    Ok(deserializer.build()?)
+}
 
 macro_rules! protocol2_servo {
     ($name:ident, $write:path, $read:path) => {
@@ -82,15 +58,22 @@ macro_rules! protocol2_servo {
             }
             
             pub fn ping(&mut self) -> Result<::protocol2::instruction::Pong, ::protocol2::Error> {
-                ::protocol2::ping(&mut self.interface, ::protocol2::PacketID::from(self.id))
+                let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::from(self.id));
+                ::protocol2::write_instruction(&mut self.interface, ping)?;
+                ::protocol2::read_status(&mut self.interface)
             }
             
             pub fn write<W: $write>(&mut self, register: W) -> Result<(), ::protocol2::Error> {
-                ::protocol2::write(&mut self.interface, ::protocol2::PacketID::from(self.id), register)
+                let write = ::protocol2::instruction::Write::new(::protocol2::PacketID::from(self.id), register);
+                ::protocol2::write_instruction(&mut self.interface, write)?;
+                ::protocol2::read_status::<T, ::protocol2::instruction::WriteResponse>(&mut self.interface)?;
+                Ok(())
             }
 
             pub fn read<R: $read>(&mut self) -> Result<R, ::protocol2::Error> {
-                ::protocol2::read(&mut self.interface, ::protocol2::PacketID::from(self.id))
+                let read = ::protocol2::instruction::Read::<R>::new(::protocol2::PacketID::from(self.id));
+                ::protocol2::write_instruction(&mut self.interface, read)?;
+                Ok(::protocol2::read_status::<T, ::protocol2::instruction::ReadResponse<R>>(&mut self.interface)?.value)
             }
         }
     };
