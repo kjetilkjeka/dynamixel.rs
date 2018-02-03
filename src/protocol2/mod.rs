@@ -97,12 +97,19 @@ macro_rules! protocol2_servo {
                 }
             }
             
-            pub fn ping(&mut self) -> Result<(), ::protocol2::Error> {
+            pub fn ping(&mut self) -> Result<::protocol2::ServoInfo, ::protocol2::Error> {
                 self.interface.set_baud_rate(self.baudrate)?;
                 let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::from(self.id));
                 ::protocol2::write_instruction(&mut self.interface, ping)?;
-                ::protocol2::read_status::<T, ::protocol2::instruction::Pong>(&mut self.interface)?;
-                Ok(())
+                let pong = ::protocol2::read_status::<T, ::protocol2::instruction::Pong>(&mut self.interface)?;
+                Ok(
+                    ::protocol2::ServoInfo{
+                        baud_rate: self.baudrate,
+                        model_number: pong.model_number,
+                        fw_version: pong.fw_version,
+                        id: pong.id,
+                    }
+                )
             }
             
             pub fn write<W: $write>(&mut self, register: W) -> Result<(), ::protocol2::Error> {
