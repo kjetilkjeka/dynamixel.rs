@@ -52,6 +52,13 @@ pub enum CommunicationError {
     Other,
 }
 
+pub enum Error {
+    Unfinished,
+    Communication(CommunicationError),
+    Format,
+    Processing,
+}
+
 /// Baud rates the interface should support
 ///
 /// May be extended and must not be matched against exhaustively.

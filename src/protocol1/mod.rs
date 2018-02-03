@@ -182,6 +182,16 @@ pub enum Error {
     Processing(ProcessingError),
 }
 
+impl From<::protocol1::Error> for ::Error {
+    fn from(e: ::protocol1::Error) -> ::Error {
+        match e {
+            ::protocol1::Error::Communication(ce) => ::Error::Communication(ce),
+            ::protocol1::Error::Format(_) => ::Error::Format,
+            ::protocol1::Error::Processing(_) => ::Error::Processing,
+        }
+    }
+}
+
 impl From<::CommunicationError> for Error {
     fn from(e: ::CommunicationError) -> Error {
         Error::Communication(e)

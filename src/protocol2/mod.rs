@@ -378,6 +378,18 @@ pub enum Error {
     Processing(ProcessingError),
 }
 
+impl From<::protocol2::Error> for ::Error {
+    fn from(e: ::protocol2::Error) -> ::Error {
+        match e {
+            ::protocol2::Error::Unfinished => ::Error::Unfinished,
+            ::protocol2::Error::Communication(ce) => ::Error::Communication(ce),
+            ::protocol2::Error::Format(_) => ::Error::Format,
+            ::protocol2::Error::Processing(_) => ::Error::Processing,
+        }
+    }
+}
+
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FormatError {
     Header,
