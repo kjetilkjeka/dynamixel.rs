@@ -63,7 +63,8 @@ macro_rules! protocol1_servo {
         }
         
         impl<T: ::Interface> $name<T> {
-            pub fn new(interface: T, baudrate: ::BaudRate, id: ::protocol1::ServoID) -> Self {
+            /// Connect to the servo without `ping`ing or taking any other measure to make sure it exists.
+            pub fn connect_unchecked(interface: T, baudrate: ::BaudRate, id: ::protocol1::ServoID) -> Self {
                 $name{
                     interface: interface,
                     baudrate: baudrate,
@@ -80,7 +81,8 @@ macro_rules! protocol1_servo {
                 self.interface.read(&mut data[4..4+length])?;
                 Ok(4+length)
             }
-            
+
+            /// Ping the servo, returning `Ok(())` if it exists.
             pub fn ping(&mut self) -> Result<(), ::protocol1::Error> {
                 self.interface.set_baud_rate(self.baudrate)?;
                 let ping = ::protocol1::instruction::Ping::new(::protocol1::PacketID::from(self.id));
@@ -91,6 +93,7 @@ macro_rules! protocol1_servo {
                 Ok(())
             }
             
+            /// Write the given data `register` to the servo.
             pub fn write_data<W: $write>(&mut self, register: W) -> Result<(), ::protocol1::Error> {
                 self.interface.set_baud_rate(self.baudrate)?;
                 let write = ::protocol1::instruction::WriteData::new(::protocol1::PacketID::from(self.id), register);
