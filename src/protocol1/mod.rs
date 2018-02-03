@@ -15,7 +15,7 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
 
     for b in BaudRate::variants() {
 
-        if let Err(e) = interface.set_baud_rate(*b) {
+        if let Err(_) = interface.set_baud_rate(*b) {
             warn!(target: "protocol1", "not able to enumerate devices on baudrate: {}", u32::from(*b));
         }
 
@@ -55,7 +55,7 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
 }
 
 #[cfg(feature="std")]
-pub fn connect<I: ::Interface + 'static>(interface: &mut I, info: ServoInfo) -> Result<Box<::Servo<I>>, CommunicationError>{
+pub(crate) fn connect<I: ::Interface + 'static>(_interface: &mut I, info: ServoInfo) -> Result<Box<::Servo<I>>, CommunicationError>{
     match info.model_number {
         ::dynamixel::mx28::MX28::<I>::MODEL_NUMBER => Ok(Box::new(::dynamixel::mx28::MX28::<I>::new(info.id, info.baud_rate))),
         _ => unimplemented!(),

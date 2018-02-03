@@ -47,6 +47,7 @@ pub enum CommunicationError {
     Other,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
     Unfinished,
     Communication(CommunicationError),

@@ -15,7 +15,7 @@ impl<I: Interface> Servo<I> for MX28<I> {
         Ok(self.write_data(interface, control_table::GoalPosition::new(goal_position))?)
     }
     
-    fn get_position(&mut self, interface: &mut I) -> Result<f32, ::Error> {
+    fn get_position(&mut self, _interface: &mut I) -> Result<f32, ::Error> {
         unimplemented!()
     }
 }
