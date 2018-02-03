@@ -95,10 +95,11 @@ macro_rules! protocol2_servo {
                 }
             }
             
-            pub fn ping(&mut self) -> Result<::protocol2::instruction::Pong, ::protocol2::Error> {
+            pub fn ping(&mut self) -> Result<(), ::protocol2::Error> {
                 let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::from(self.id));
                 ::protocol2::write_instruction(&mut self.interface, ping)?;
-                ::protocol2::read_status(&mut self.interface)
+                ::protocol2::read_status::<T, ::protocol2::instruction::Pong>(&mut self.interface)?;
+                Ok(())
             }
             
             pub fn write<W: $write>(&mut self, register: W) -> Result<(), ::protocol2::Error> {

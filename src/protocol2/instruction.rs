@@ -1,7 +1,7 @@
 use protocol2::*;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Ping {
+pub(crate) struct Ping {
     id: PacketID,
 }
 
@@ -25,7 +25,7 @@ impl Instruction for Ping {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Pong {
+pub(crate) struct Pong {
     pub id: ServoID,
     pub model_number: u16,
     pub fw_version: u8,
@@ -45,7 +45,7 @@ impl Status for Pong {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Read<T: ReadRegister> {
+pub(crate) struct Read<T: ReadRegister> {
     id: PacketID,
     phantom: ::lib::marker::PhantomData<T>,
 }
@@ -76,7 +76,7 @@ impl<T: ReadRegister> Instruction for Read<T> {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct ReadResponse<T: ReadRegister> {
+pub(crate) struct ReadResponse<T: ReadRegister> {
     pub id: ServoID,
     pub value: T,
 }
@@ -94,7 +94,7 @@ impl<T: ReadRegister> Status for ReadResponse<T> {
 
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Write<T: WriteRegister> {
+pub(crate) struct Write<T: WriteRegister> {
     id: PacketID,
     data: T,
 }
@@ -127,7 +127,7 @@ impl<T: WriteRegister> Instruction for Write<T>{
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct WriteResponse {
+pub(crate) struct WriteResponse {
     pub id: ServoID,
 }
 
