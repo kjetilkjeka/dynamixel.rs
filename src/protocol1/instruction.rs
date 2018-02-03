@@ -1,7 +1,7 @@
 use protocol1::*;
 use protocol1::ServoID;
 
-pub struct Ping {
+pub(crate) struct Ping {
     pub id: PacketID,
 }
 
@@ -24,7 +24,7 @@ impl Instruction for Ping {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Pong {
+pub(crate) struct Pong {
     pub id: ServoID,
 }
 
@@ -38,7 +38,7 @@ impl Status for Pong {
 }
 
 
-pub struct WriteData<T: WriteRegister> {
+pub(crate) struct WriteData<T: WriteRegister> {
     pub id: PacketID,
     pub data: T,
 }
@@ -66,7 +66,7 @@ impl<T: WriteRegister> Instruction for WriteData<T>{
     }
 }
 
-pub struct WriteDataResponse {
+pub(crate) struct WriteDataResponse {
     pub id: ServoID,
 }
 

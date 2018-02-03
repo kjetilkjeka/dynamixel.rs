@@ -79,12 +79,13 @@ macro_rules! protocol1_servo {
                 Ok(4+length)
             }
             
-            pub fn ping(&mut self) -> Result<::protocol1::instruction::Pong, ::protocol1::Error> {
+            pub fn ping(&mut self) -> Result<(), ::protocol1::Error> {
                 let ping = ::protocol1::instruction::Ping::new(::protocol1::PacketID::from(self.id));
                 self.interface.write(&::protocol1::Instruction::serialize(&ping))?;
                 let mut received_data = [0u8; 14];
                 self.read_response(&mut received_data)?;
-                <::protocol1::instruction::Pong as ::protocol1::Status>::deserialize(&received_data)
+                <::protocol1::instruction::Pong as ::protocol1::Status>::deserialize(&received_data)?;
+                Ok(())
             }
             
             pub fn write_data<W: $write>(&mut self, register: W) -> Result<(), ::protocol1::Error> {
@@ -116,7 +117,7 @@ pub trait WriteRegister: Register {
     fn serialize(&self) -> [u8; 4];
 }
 
-pub trait Instruction {
+pub(crate) trait Instruction {
     // The array type is no longer needed when const generics land
     // replace with [u8; Self::LENGTH]
     type Array;
@@ -127,7 +128,7 @@ pub trait Instruction {
     fn serialize(&self) -> Self::Array;
 }
 
-pub trait Status {
+pub(crate) trait Status {
     const LENGTH: u8;
 
     fn deserialize_parameters(id: ServoID, parameters: &[u8]) -> Self;
@@ -258,7 +259,7 @@ impl ServoID {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum PacketID {
+pub(crate) enum PacketID {
     Unicast(ServoID),
     Broadcast,
 }
