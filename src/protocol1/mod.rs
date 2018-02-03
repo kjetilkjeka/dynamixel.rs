@@ -38,7 +38,7 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
                 Ok(pong) => servos.push(
                     ServoInfo{
                         baud_rate: *b,
-                        model_number: 0,
+                        model_number: 0x001D,
                         fw_version: 0,
                         id: pong.id,
                     }
@@ -54,26 +54,36 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
     Ok(servos)
 }
 
+#[cfg(feature="std")]
+pub fn connect<I: ::Interface + 'static>(interface: &mut I, info: ServoInfo) -> Result<Box<::Servo<I>>, CommunicationError>{
+    match info.model_number {
+        0x001D => Ok(Box::new(::dynamixel::mx28::MX28::<I>::new(info.id, info.baud_rate))),
+        _ => unimplemented!(),
+    }
+}
+
 
 macro_rules! protocol1_servo {
     ($name:ident, $write:path, $read:path, $model_number:expr) => {
-        pub struct $name {
+        pub struct $name<I: ::Interface> {
             id: ::protocol1::ServoID,
             baudrate: ::BaudRate,
+            interface: ::lib::marker::PhantomData<I>,
         }
         
-        impl $name {
+        impl<I: ::Interface> $name<I> {
             const MODEL_NUMBER: u16 = $model_number;
 
             /// Creates a new servo without `ping`ing or taking any other measure to make sure it exists.
-            pub fn new(baudrate: ::BaudRate, id: ::protocol1::ServoID) -> Self {
+            pub fn new(id: ::protocol1::ServoID, baudrate: ::BaudRate) -> Self {
                 $name{
                     id: id,
                     baudrate: baudrate,
+                    interface: ::lib::marker::PhantomData{},
                 }
             }
             
-            fn read_response<I: ::Interface>(&mut self, interface: &mut I, data: &mut [u8]) -> Result<usize, ::CommunicationError> {
+            fn read_response(&mut self, interface: &mut I, data: &mut [u8]) -> Result<usize, ::CommunicationError> {
                 // first read header
                 interface.read(&mut data[..4])?;
 
@@ -84,7 +94,7 @@ macro_rules! protocol1_servo {
             }
 
             /// Ping the servo, returning `Ok(())` if it exists.
-            pub fn ping<I: ::Interface>(&mut self, interface: &mut I) -> Result<(), ::protocol1::Error> {
+            pub fn ping(&mut self, interface: &mut I) -> Result<(), ::protocol1::Error> {
                 interface.set_baud_rate(self.baudrate)?;
                 interface.flush();
 
@@ -97,7 +107,7 @@ macro_rules! protocol1_servo {
             }
             
             /// Write the given data `register` to the servo.
-            pub fn write_data<I: ::Interface, W: $write>(&mut self, interface: &mut I, register: W) -> Result<(), ::protocol1::Error> {
+            pub fn write_data<W: $write>(&mut self, interface: &mut I, register: W) -> Result<(), ::protocol1::Error> {
                 interface.set_baud_rate(self.baudrate)?;
                 interface.flush();
                 

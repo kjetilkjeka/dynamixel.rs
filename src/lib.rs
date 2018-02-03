@@ -27,23 +27,18 @@ pub mod dynamixel;
 #[cfg(feature="serialport")]
 mod serial_impl;
 
-pub trait Servo {
-    type OperatingModes;
-    type Error;
+#[cfg(feature="std")]
+pub trait Servo<I: Interface> {
+    fn set_enable_torque(&mut self, interface: &mut I, enable_torque: bool) -> Result<(), ::Error>;
 
-    fn set_enable_torque<I: Interface>(&mut self, interface: &mut I, enable_torque: bool) -> Result<(), Self::Error>;
-    
-    /// Configure the servo into a specified operating mode.
-    ///
-    /// This allows use of that operting as a setpoint by calling `set_setpoint(&mut self, operating_mode, f32)` afterwards.
-    fn set_operating_mode<I: Interface>(&mut self, interface: &mut I, operating_mode: Self::OperatingModes) -> Result<(), Self::Error>;
-
-    /// Set the servo setpoint
-    ///
-    /// Requires that the servo is configured to the correct operating mode with `set_operating_mode` first.
-    fn set_setpoint<I: Interface>(&mut self, interface: &mut I, operating_mode: Self::OperatingModes, f32) -> Result<(), Self::Error>;
-    fn get_position<I: Interface>(&mut self, interface: &mut I) -> Result<f32, Self::Error>;
+    fn set_position(&mut self, interface: &mut I, value: f32) -> Result<(), ::Error>;
+    fn get_position(&mut self, interface: &mut I) -> Result<f32, ::Error>;
 }
+
+
+
+
+
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CommunicationError {
@@ -215,6 +210,13 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
     Ok(servos)
 }
 
+#[cfg(feature="std")]
+pub fn connect<I: Interface + 'static>(interface: &mut I, info: ServoInfo) -> Result<Box<Servo<I>>, CommunicationError> {
+    match info {
+        ServoInfo::Protocol1(si) => protocol1::connect(interface, si),
+        ServoInfo::Protocol2(si) => protocol2::connect(interface, si),
+    }
+}
 
 #[cfg(test)]
 mod tests {

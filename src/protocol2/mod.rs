@@ -4,6 +4,7 @@ mod control_table;
 mod crc;
 mod bit_stuffer;
 
+use Interface;
 use BaudRate;
 use CommunicationError;
 
@@ -81,24 +82,34 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
     Ok(servos)
 }
 
+#[cfg(feature="std")]
+pub fn connect<I: Interface + 'static>(interface: &mut I, info: ServoInfo) -> Result<Box<::Servo<I>>, CommunicationError>{
+    match info.model_number {
+        0xA918 => Ok(Box::new(::pro::M4210S260R::<I>::new(info.id, info.baud_rate))),
+        _ => unimplemented!(),
+    }
+}
+
 macro_rules! protocol2_servo {
     ($name:ident, $write:path, $read:path, $model_number:expr) => {
-        pub struct $name {
+        pub struct $name<I: ::Interface> {
             id: ::protocol2::ServoID,
             baudrate: ::BaudRate,
+            interface: ::lib::marker::PhantomData<I>,
         }
 
-        impl $name {
+        impl<I: ::Interface> $name<I> {
             /// Create a new servo without `ping`ing or taking any other measure to make sure it exists.
             pub fn new(id: ::protocol2::ServoID, baudrate: ::BaudRate) -> Self {
                 $name{
                     id: id,
                     baudrate: baudrate,
+                    interface: ::lib::marker::PhantomData{},
                 }
             }
             
             /// Ping the servo, returning `Ok(ServoInfo)` if it exists.
-            pub fn ping<I: ::Interface>(&mut self, interface: &mut I) -> Result<::protocol2::ServoInfo, ::protocol2::Error> {
+            pub fn ping(&mut self, interface: &mut I) -> Result<::protocol2::ServoInfo, ::protocol2::Error> {
                 interface.set_baud_rate(self.baudrate)?;
                 interface.flush();
                 
@@ -116,7 +127,7 @@ macro_rules! protocol2_servo {
             }
 
             /// Write the given data `register` to the servo.
-            pub fn write<I: ::Interface, W: $write>(&mut self, interface: &mut I, register: W) -> Result<(), ::protocol2::Error> {
+            pub fn write<W: $write>(&mut self, interface: &mut I, register: W) -> Result<(), ::protocol2::Error> {
                 interface.set_baud_rate(self.baudrate)?;
                 let write = ::protocol2::instruction::Write::new(::protocol2::PacketID::from(self.id), register);
                 ::protocol2::write_instruction(interface, write)?;
@@ -125,7 +136,7 @@ macro_rules! protocol2_servo {
             }
 
             /// Read data from a register
-            pub fn read<I: ::Interface, R: $read>(&mut self, interface: &mut I) -> Result<R, ::protocol2::Error> {
+            pub fn read<R: $read>(&mut self, interface: &mut I) -> Result<R, ::protocol2::Error> {
                 interface.set_baud_rate(self.baudrate)?;
                 interface.flush();
                 
