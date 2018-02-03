@@ -85,7 +85,7 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
 #[cfg(feature="std")]
 pub fn connect<I: Interface + 'static>(interface: &mut I, info: ServoInfo) -> Result<Box<::Servo<I>>, CommunicationError>{
     match info.model_number {
-        0xA918 => Ok(Box::new(::pro::M4210S260R::<I>::new(info.id, info.baud_rate))),
+        ::pro::M4210S260R::<I>::MODEL_NUMBER => Ok(Box::new(::pro::M4210S260R::<I>::new(info.id, info.baud_rate))),
         _ => unimplemented!(),
     }
 }
@@ -99,6 +99,8 @@ macro_rules! protocol2_servo {
         }
 
         impl<I: ::Interface> $name<I> {
+            pub const MODEL_NUMBER: u16 = $model_number;
+
             /// Create a new servo without `ping`ing or taking any other measure to make sure it exists.
             pub fn new(id: ::protocol2::ServoID, baudrate: ::BaudRate) -> Self {
                 $name{
