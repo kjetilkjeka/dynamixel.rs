@@ -11,4 +11,9 @@ log = "0.4"
 
 [features]
 default = []
-std = []
+std = ["log/std"]
+
+[dev-dependencies]
+badlog = "1.1"
+serialport = "2.0"
+dynamixel = {path = ".", features = ["std", "serialport"]}
