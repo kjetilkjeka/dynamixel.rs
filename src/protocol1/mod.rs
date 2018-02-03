@@ -58,13 +58,15 @@ macro_rules! protocol1_servo {
     ($name:ident, $write:path, $read:path) => {
         pub struct $name<T: ::Interface> {
             interface: T,
+            baudrate: ::BaudRate,
             id: ::protocol1::ServoID,
         }
         
         impl<T: ::Interface> $name<T> {
-            pub fn new(interface: T, id: ::protocol1::ServoID) -> Self {
+            pub fn new(interface: T, baudrate: ::BaudRate, id: ::protocol1::ServoID) -> Self {
                 $name{
                     interface: interface,
+                    baudrate: baudrate,
                     id: id,
                 }
             }
@@ -80,6 +82,7 @@ macro_rules! protocol1_servo {
             }
             
             pub fn ping(&mut self) -> Result<(), ::protocol1::Error> {
+                self.interface.set_baud_rate(self.baudrate)?;
                 let ping = ::protocol1::instruction::Ping::new(::protocol1::PacketID::from(self.id));
                 self.interface.write(&::protocol1::Instruction::serialize(&ping))?;
                 let mut received_data = [0u8; 14];
@@ -89,6 +92,7 @@ macro_rules! protocol1_servo {
             }
             
             pub fn write_data<W: $write>(&mut self, register: W) -> Result<(), ::protocol1::Error> {
+                self.interface.set_baud_rate(self.baudrate)?;
                 let write = ::protocol1::instruction::WriteData::new(::protocol1::PacketID::from(self.id), register);
                 self.interface.write(&::protocol1::Instruction::serialize(&write)[0..<::protocol1::instruction::WriteData<W> as ::protocol1::Instruction>::LENGTH as usize + 4])?;
                 let mut received_data = [0u8; 11];

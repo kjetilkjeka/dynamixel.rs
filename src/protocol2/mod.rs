@@ -84,18 +84,21 @@ macro_rules! protocol2_servo {
     ($name:ident, $write:path, $read:path) => {
         pub struct $name<T: ::Interface> {
             interface: T,
+            baudrate: ::BaudRate,
             id: ::protocol2::ServoID,
         }
 
         impl<T: ::Interface> $name<T> {
-            pub fn new(interface: T, id: ::protocol2::ServoID) -> Self {
+            pub fn new(interface: T, baudrate: ::BaudRate, id: ::protocol2::ServoID) -> Self {
                 $name{
                     interface: interface,
+                    baudrate: baudrate,
                     id: id,
                 }
             }
             
             pub fn ping(&mut self) -> Result<(), ::protocol2::Error> {
+                self.interface.set_baud_rate(self.baudrate)?;
                 let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::from(self.id));
                 ::protocol2::write_instruction(&mut self.interface, ping)?;
                 ::protocol2::read_status::<T, ::protocol2::instruction::Pong>(&mut self.interface)?;
@@ -103,6 +106,7 @@ macro_rules! protocol2_servo {
             }
             
             pub fn write<W: $write>(&mut self, register: W) -> Result<(), ::protocol2::Error> {
+                self.interface.set_baud_rate(self.baudrate)?;
                 let write = ::protocol2::instruction::Write::new(::protocol2::PacketID::from(self.id), register);
                 ::protocol2::write_instruction(&mut self.interface, write)?;
                 ::protocol2::read_status::<T, ::protocol2::instruction::WriteResponse>(&mut self.interface)?;
@@ -110,6 +114,7 @@ macro_rules! protocol2_servo {
             }
 
             pub fn read<R: $read>(&mut self) -> Result<R, ::protocol2::Error> {
+                self.interface.set_baud_rate(self.baudrate)?;
                 let read = ::protocol2::instruction::Read::<R>::new(::protocol2::PacketID::from(self.id));
                 ::protocol2::write_instruction(&mut self.interface, read)?;
                 Ok(::protocol2::read_status::<T, ::protocol2::instruction::ReadResponse<R>>(&mut self.interface)?.value)
