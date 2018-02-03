@@ -147,6 +147,11 @@ pub trait Interface {
     ///
     /// `BaudRate` must not be matched against exhaustively.
     fn set_baud_rate(&mut self, b: BaudRate) -> Result<(), CommunicationError>;
+
+    /// Flush out the read buffer
+    ///
+    /// Whenever a new transmission is started, old data from the read buffer needs to be flushed out first.
+    fn flush(&mut self);
     
     /// A blocking/spinning read with timeout.
     ///

@@ -56,6 +56,7 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
             warn!(target: "protocol2", "not able to enumerate devices on baudrate: {}", u32::from(*b));
         }
 
+        interface.flush();
         let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::Broadcast);
         write_instruction(interface, ping)?;
 
@@ -99,6 +100,8 @@ macro_rules! protocol2_servo {
             /// Ping the servo, returning `Ok(ServoInfo)` if it exists.
             pub fn ping<I: ::Interface>(&mut self, interface: &mut I) -> Result<::protocol2::ServoInfo, ::protocol2::Error> {
                 interface.set_baud_rate(self.baudrate)?;
+                interface.flush();
+                
                 let ping = ::protocol2::instruction::Ping::new(::protocol2::PacketID::from(self.id));
                 ::protocol2::write_instruction(interface, ping)?;
                 let pong = ::protocol2::read_status::<I, ::protocol2::instruction::Pong>(interface)?;
@@ -124,6 +127,8 @@ macro_rules! protocol2_servo {
             /// Read data from a register
             pub fn read<I: ::Interface, R: $read>(&mut self, interface: &mut I) -> Result<R, ::protocol2::Error> {
                 interface.set_baud_rate(self.baudrate)?;
+                interface.flush();
+                
                 let read = ::protocol2::instruction::Read::<R>::new(::protocol2::PacketID::from(self.id));
                 ::protocol2::write_instruction(interface, read)?;
                 Ok(::protocol2::read_status::<I, ::protocol2::instruction::ReadResponse<R>>(interface)?.value)

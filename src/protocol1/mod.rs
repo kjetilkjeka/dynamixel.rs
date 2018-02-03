@@ -19,6 +19,7 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
             warn!(target: "protocol1", "not able to enumerate devices on baudrate: {}", u32::from(*b));
         }
 
+        interface.flush();
         let ping = ::protocol1::instruction::Ping::new(PacketID::Broadcast);
         interface.write(&::protocol1::Instruction::serialize(&ping))?;
 
@@ -85,6 +86,8 @@ macro_rules! protocol1_servo {
             /// Ping the servo, returning `Ok(())` if it exists.
             pub fn ping<I: ::Interface>(&mut self, interface: &mut I) -> Result<(), ::protocol1::Error> {
                 interface.set_baud_rate(self.baudrate)?;
+                interface.flush();
+
                 let ping = ::protocol1::instruction::Ping::new(::protocol1::PacketID::from(self.id));
                 interface.write(&::protocol1::Instruction::serialize(&ping))?;
                 let mut received_data = [0u8; 14];
@@ -96,6 +99,8 @@ macro_rules! protocol1_servo {
             /// Write the given data `register` to the servo.
             pub fn write_data<I: ::Interface, W: $write>(&mut self, interface: &mut I, register: W) -> Result<(), ::protocol1::Error> {
                 interface.set_baud_rate(self.baudrate)?;
+                interface.flush();
+                
                 let write = ::protocol1::instruction::WriteData::new(::protocol1::PacketID::from(self.id), register);
                 interface.write(&::protocol1::Instruction::serialize(&write)[0..<::protocol1::instruction::WriteData<W> as ::protocol1::Instruction>::LENGTH as usize + 4])?;
                 let mut received_data = [0u8; 11];
