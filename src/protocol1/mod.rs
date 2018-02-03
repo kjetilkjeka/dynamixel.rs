@@ -56,52 +56,50 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
 
 macro_rules! protocol1_servo {
     ($name:ident, $write:path, $read:path, $model_number:expr) => {
-        pub struct $name<T: ::Interface> {
-            interface: T,
-            baudrate: ::BaudRate,
+        pub struct $name {
             id: ::protocol1::ServoID,
+            baudrate: ::BaudRate,
         }
         
-        impl<T: ::Interface> $name<T> {
+        impl $name {
             const MODEL_NUMBER: u16 = $model_number;
 
-            /// Connect to the servo without `ping`ing or taking any other measure to make sure it exists.
-            pub fn connect_unchecked(interface: T, baudrate: ::BaudRate, id: ::protocol1::ServoID) -> Self {
+            /// Creates a new servo without `ping`ing or taking any other measure to make sure it exists.
+            pub fn new(baudrate: ::BaudRate, id: ::protocol1::ServoID) -> Self {
                 $name{
-                    interface: interface,
-                    baudrate: baudrate,
                     id: id,
+                    baudrate: baudrate,
                 }
             }
             
-            fn read_response(&mut self, data: &mut [u8]) -> Result<usize, ::CommunicationError> {
+            fn read_response<I: ::Interface>(&mut self, interface: &mut I, data: &mut [u8]) -> Result<usize, ::CommunicationError> {
                 // first read header
-                self.interface.read(&mut data[..4])?;
+                interface.read(&mut data[..4])?;
 
                 // then read rest of message depending on header length
                 let length = data[3] as usize;
-                self.interface.read(&mut data[4..4+length])?;
+                interface.read(&mut data[4..4+length])?;
                 Ok(4+length)
             }
 
             /// Ping the servo, returning `Ok(())` if it exists.
-            pub fn ping(&mut self) -> Result<(), ::protocol1::Error> {
-                self.interface.set_baud_rate(self.baudrate)?;
+            pub fn ping<I: ::Interface>(&mut self, interface: &mut I) -> Result<(), ::protocol1::Error> {
+                interface.set_baud_rate(self.baudrate)?;
                 let ping = ::protocol1::instruction::Ping::new(::protocol1::PacketID::from(self.id));
-                self.interface.write(&::protocol1::Instruction::serialize(&ping))?;
+                interface.write(&::protocol1::Instruction::serialize(&ping))?;
                 let mut received_data = [0u8; 14];
-                self.read_response(&mut received_data)?;
+                self.read_response(interface, &mut received_data)?;
                 <::protocol1::instruction::Pong as ::protocol1::Status>::deserialize(&received_data)?;
                 Ok(())
             }
             
             /// Write the given data `register` to the servo.
-            pub fn write_data<W: $write>(&mut self, register: W) -> Result<(), ::protocol1::Error> {
-                self.interface.set_baud_rate(self.baudrate)?;
+            pub fn write_data<I: ::Interface, W: $write>(&mut self, interface: &mut I, register: W) -> Result<(), ::protocol1::Error> {
+                interface.set_baud_rate(self.baudrate)?;
                 let write = ::protocol1::instruction::WriteData::new(::protocol1::PacketID::from(self.id), register);
-                self.interface.write(&::protocol1::Instruction::serialize(&write)[0..<::protocol1::instruction::WriteData<W> as ::protocol1::Instruction>::LENGTH as usize + 4])?;
+                interface.write(&::protocol1::Instruction::serialize(&write)[0..<::protocol1::instruction::WriteData<W> as ::protocol1::Instruction>::LENGTH as usize + 4])?;
                 let mut received_data = [0u8; 11];
-                let length = self.read_response(&mut received_data)?;
+                let length = self.read_response(interface, &mut received_data)?;
                 match <::protocol1::instruction::WriteDataResponse as ::protocol1::Status>::deserialize(&received_data[0..length]) {
                     Ok(::protocol1::instruction::WriteDataResponse{id: _}) => Ok(()),
                     Err(e) => Err(e),

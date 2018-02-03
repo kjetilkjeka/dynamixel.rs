@@ -31,18 +31,18 @@ pub trait Servo {
     type OperatingModes;
     type Error;
 
-    fn set_enable_torque(&mut self, enable_torque: bool) -> Result<(), Self::Error>;
+    fn set_enable_torque<I: Interface>(&mut self, interface: &mut I, enable_torque: bool) -> Result<(), Self::Error>;
     
     /// Configure the servo into a specified operating mode.
     ///
     /// This allows use of that operting as a setpoint by calling `set_setpoint(&mut self, operating_mode, f32)` afterwards.
-    fn set_operating_mode(&mut self, operating_mode: Self::OperatingModes) -> Result<(), Self::Error>;
+    fn set_operating_mode<I: Interface>(&mut self, interface: &mut I, operating_mode: Self::OperatingModes) -> Result<(), Self::Error>;
 
     /// Set the servo setpoint
     ///
     /// Requires that the servo is configured to the correct operating mode with `set_operating_mode` first.
-    fn set_setpoint(&mut self, operating_mode: Self::OperatingModes, f32) -> Result<(), Self::Error>;
-    fn get_position(&mut self) -> Result<f32, Self::Error>;
+    fn set_setpoint<I: Interface>(&mut self, interface: &mut I, operating_mode: Self::OperatingModes, f32) -> Result<(), Self::Error>;
+    fn get_position<I: Interface>(&mut self, interface: &mut I) -> Result<f32, Self::Error>;
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
