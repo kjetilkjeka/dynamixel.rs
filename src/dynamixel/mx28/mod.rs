@@ -3,7 +3,7 @@ pub mod control_table;
 use Interface;
 use Servo;
 
-protocol1_servo!(MX28, ::dynamixel::mx28::control_table::WriteRegister, ::dynamixel::mx28::control_table::ReadRegister);
+protocol1_servo!(MX28, ::dynamixel::mx28::control_table::WriteRegister, ::dynamixel::mx28::control_table::ReadRegister, 0x001D);
 
 pub enum OperatingModes {
     Position,

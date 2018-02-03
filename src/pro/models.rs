@@ -1,7 +1,7 @@
 use Interface;
 use Servo;
 
-protocol2_servo!(M4210S260R, ::pro::control_table::WriteRegister, ::pro::control_table::ReadRegister);
+protocol2_servo!(M4210S260R, ::pro::control_table::WriteRegister, ::pro::control_table::ReadRegister, 0xA918);
 
 impl<T: Interface> Servo for M4210S260R<T> {
     type OperatingModes = ::pro::OperatingModes;

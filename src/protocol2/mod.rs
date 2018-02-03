@@ -81,7 +81,7 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Er
 }
 
 macro_rules! protocol2_servo {
-    ($name:ident, $write:path, $read:path) => {
+    ($name:ident, $write:path, $read:path, $model_number:expr) => {
         pub struct $name<T: ::Interface> {
             interface: T,
             baudrate: ::BaudRate,

@@ -55,7 +55,7 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Er
 
 
 macro_rules! protocol1_servo {
-    ($name:ident, $write:path, $read:path) => {
+    ($name:ident, $write:path, $read:path, $model_number:expr) => {
         pub struct $name<T: ::Interface> {
             interface: T,
             baudrate: ::BaudRate,
@@ -63,6 +63,8 @@ macro_rules! protocol1_servo {
         }
         
         impl<T: ::Interface> $name<T> {
+            const MODEL_NUMBER: u16 = $model_number;
+
             /// Connect to the servo without `ping`ing or taking any other measure to make sure it exists.
             pub fn connect_unchecked(interface: T, baudrate: ::BaudRate, id: ::protocol1::ServoID) -> Self {
                 $name{
