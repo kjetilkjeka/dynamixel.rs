@@ -11,7 +11,7 @@ use bit_field::BitField;
 use self::bit_stuffer::BitStuffer;
 
 /// Write the instruction on the interface
-pub(crate) fn write_instruction<I: ::Interface, T: Instruction>(interface: &mut I, instruction: T) -> Result<(), Error> {
+pub(crate) fn write_instruction<I: ::Interface, T: Instruction>(interface: &mut I, instruction: T) -> Result<(), CommunicationError> {
     for b in instruction.serialize() {
         interface.write(&[b])?
     }
@@ -47,7 +47,7 @@ pub(crate) fn read_status<I: ::Interface, T: Status>(interface: &mut I) -> Resul
 
 /// Enumerate all protocol 2 servos connected to the interface
 #[cfg(feature="std")]
-pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Error> {
+pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, CommunicationError> {
     let mut servos = Vec::new();
 
     for b in BaudRate::variants() {

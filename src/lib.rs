@@ -183,6 +183,27 @@ impl From<std::io::Error> for CommunicationError {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum ServoInfo {
+    Protocol1(protocol1::ServoInfo),
+    Protocol2(protocol2::ServoInfo),
+}
+
+/// Enumerate all servos connected to the interface
+#[cfg(feature="std")]
+pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, CommunicationError> {
+    let mut servos = Vec::new();
+
+    let servos_protocol1 = protocol1::enumerate(interface)?;
+    let servos_protocol2 = protocol2::enumerate(interface)?;
+
+    servos.append(&mut servos_protocol1.into_iter().map(|x| ServoInfo::Protocol1(x)).collect());
+    servos.append(&mut servos_protocol2.into_iter().map(|x| ServoInfo::Protocol2(x)).collect());
+
+    Ok(servos)
+}
+
+
 #[cfg(test)]
 mod tests {
     #[test]

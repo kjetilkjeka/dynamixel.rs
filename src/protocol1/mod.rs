@@ -10,7 +10,7 @@ mod checksum;
 
 /// Enumerate all protocol 1 servos connected to the interface
 #[cfg(feature="std")]
-pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Error> {
+pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, CommunicationError> {
     let mut servos = Vec::new();
 
     for b in BaudRate::variants() {
