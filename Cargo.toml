@@ -15,4 +15,7 @@ std = ["log/std"]
 [dev-dependencies]
 badlog = "1.1"
 serialport = "2.0"
-dynamixel = {path = ".", features = ["std", "serialport"]}
+
+[[example]]
+name = "serialport"
+required-features = ["std", "serialport"]

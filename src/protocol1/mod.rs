@@ -200,7 +200,6 @@ pub(crate) trait Status {
 }
 
 /// All information needed to connect to a protocol 1 servo
-#[cfg(feature="std")]
 #[derive(Debug, Clone)]
 pub struct ServoInfo {
     baud_rate: ::BaudRate,
