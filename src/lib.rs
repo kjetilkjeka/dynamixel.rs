@@ -27,19 +27,27 @@ pub mod dynamixel;
 #[cfg(feature="serialport")]
 mod serial_impl;
 
-#[cfg(feature="std")]
+/// The generic servo trait
+///
+/// Allow using servos without knowing the exact type.
 pub trait Servo<I: Interface> {
+
+    /// Enable/Disable torque on the servo.
     fn set_enable_torque(&mut self, interface: &mut I, enable_torque: bool) -> Result<(), ::Error>;
 
+    /// Set the goal position. Some servos will be put into "position control mode" when this method is called.
+    ///
+    /// value is in unit: radians
     fn set_position(&mut self, interface: &mut I, value: f32) -> Result<(), ::Error>;
+    
+    /// Get the current position.
+    ///
+    /// The result is returned in unit: radians 
     fn get_position(&mut self, interface: &mut I) -> Result<f32, ::Error>;
 }
 
 
-
-
-
-
+/// An Error originating from an `Interface`
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CommunicationError {
     TimedOut,
@@ -50,6 +58,8 @@ pub enum CommunicationError {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
     Unfinished,
+    
+    /// An Error originating from the `Interface`
     Communication(CommunicationError),
     Format,
     Processing,
@@ -191,6 +201,7 @@ impl From<std::io::Error> for CommunicationError {
     }
 }
 
+/// All information needed to connect to a servo
 #[derive(Debug, Clone)]
 pub enum ServoInfo {
     Protocol1(protocol1::ServoInfo),
@@ -198,6 +209,8 @@ pub enum ServoInfo {
 }
 
 /// Enumerate all servos connected to the interface
+///
+/// This functions returns a Vec and thus requires the `std` feature.
 #[cfg(feature="std")]
 pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, CommunicationError> {
     let mut servos = Vec::new();
@@ -211,6 +224,10 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
     Ok(servos)
 }
 
+/// Connect genericly to a servo
+///
+/// Only offers basic functionality. If you need more functionality use the connect method of the correct servo type instead.
+/// This functions returns a Boxed trait and this requires the `std` feature.
 #[cfg(feature="std")]
 pub fn connect<I: Interface + 'static>(interface: &mut I, info: ServoInfo) -> Result<Box<Servo<I>>, CommunicationError> {
     match info {

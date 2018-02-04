@@ -1,3 +1,8 @@
+//! Dynamixel Pro servos
+//!
+//! Documentation can be found in: http://support.robotis.com/en/product/actuator/dynamixel_pro.html
+
+
 use Interface;
 use Servo;
 

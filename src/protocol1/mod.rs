@@ -1,3 +1,7 @@
+//! Dynamixel Protocol 1
+//!
+//! Documentation can be found in: http://support.robotis.com/en/product/actuator/dynamixel/dxl_communication.html
+
 use BaudRate;
 use CommunicationError;
 
@@ -9,6 +13,7 @@ pub(crate) mod instruction;
 mod checksum;
 
 /// Enumerate all protocol 1 servos connected to the interface
+/// This functions returns a Vec and thus requires the `std` feature.
 #[cfg(feature="std")]
 pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, CommunicationError> {
     let mut servos = Vec::new();
@@ -54,6 +59,10 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
     Ok(servos)
 }
 
+/// Connect genericly to a protocol 2 servo
+///
+/// Only offers basic functionality. If you need more functionality use the connect method of the correct servo type instead.
+/// This functions returns a Boxed trait and this requires the `std` feature.
 #[cfg(feature="std")]
 pub(crate) fn connect<I: ::Interface + 'static>(_interface: &mut I, info: ServoInfo) -> Result<Box<::Servo<I>>, CommunicationError>{
     match info.model_number {
@@ -190,6 +199,8 @@ pub(crate) trait Status {
     }
 }
 
+/// All information needed to connect to a protocol 1 servo
+#[cfg(feature="std")]
 #[derive(Debug, Clone)]
 pub struct ServoInfo {
     baud_rate: ::BaudRate,

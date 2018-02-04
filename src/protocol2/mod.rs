@@ -1,3 +1,8 @@
+//! Dynamixel Protocol 2
+//!
+//! Documentation can be found in: http://support.robotis.com/en/product/actuator/dynamixel_pro/communication.html
+
+
 pub(crate) mod instruction;
 #[macro_use]
 mod control_table;
@@ -47,6 +52,8 @@ pub(crate) fn read_status<I: ::Interface, T: Status>(interface: &mut I) -> Resul
 }
 
 /// Enumerate all protocol 2 servos connected to the interface
+///
+/// This functions returns a Vec and thus requires the `std` feature.
 #[cfg(feature="std")]
 pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, CommunicationError> {
     let mut servos = Vec::new();
@@ -82,6 +89,9 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
     Ok(servos)
 }
 
+/// Connect genericly to a protocol 2 servo
+///
+/// Only offers basic functionality. If you need more functionality use the connect method of the correct servo type instead.
 #[cfg(feature="std")]
 pub fn connect<I: Interface + 'static>(_interface: &mut I, info: ServoInfo) -> Result<Box<::Servo<I>>, CommunicationError>{
     match info.model_number {
@@ -368,6 +378,7 @@ impl<T: Status> BodyDeserializer<T> {
     }
 }
 
+/// All information needed to connect to a protocol 2 servo
 #[derive(Debug, Clone)]
 pub struct ServoInfo {
     pub baud_rate: ::BaudRate,
