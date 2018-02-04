@@ -1,7 +1,17 @@
 [package]
 name = "dynamixel"
-version = "0.0.0"
+description = "A (soon to be) full featured dynamixel servo library in rust"
+version = "0.1.0"
+
 authors = ["Kjetil Kjeka <kjetilkjeka@gmail.com>"]
+
+repository = "https://github.com/kjetilkjeka/dynamixel.rs"
+readme = "README.md"
+
+keywords = ["servo", "dynamixel", "rs485"]
+categories = ["no-std", "embedded", "hardware-support"]
+
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 bit_field = "0.9.0"
@@ -19,3 +29,6 @@ serialport = "2.0"
 [[example]]
 name = "serialport"
 required-features = ["std", "serialport"]
+
+[badges]
+travis-ci = { repository = "Kjetilkjeka/dynamixel.rs", branch = "master" }
