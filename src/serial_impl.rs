@@ -45,7 +45,7 @@ impl Interface for std::boxed::Box<serialport::SerialPort> {
 
     fn flush(&mut self) {
         let mut buf = Vec::new();
-        self.read_to_end(&mut buf);
+        let _res = self.read_to_end(&mut buf);
     }
     
     fn read(&mut self, data: &mut [u8]) -> Result<(), CommunicationError> {
