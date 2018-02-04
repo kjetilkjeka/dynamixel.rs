@@ -10,7 +10,6 @@ mod lib {
 #[macro_use]
 extern crate log;
 
-extern crate embedded_types;
 extern crate bit_field;
 
 #[cfg(feature="serialport")]
