@@ -120,6 +120,20 @@ macro_rules! protocol1_servo {
                     Err(e) => Err(e),
                 }
             }
+            
+            pub fn read_data<R: $read>(&mut self, interface: &mut I) -> Result<R, ::protocol1::Error> {
+                interface.set_baud_rate(self.baudrate)?;
+                interface.flush();
+
+                let read = ::protocol1::instruction::ReadData::<R>::new(::protocol1::PacketID::from(self.id));
+                interface.write(&::protocol1::Instruction::serialize(&read))?;
+                let mut received_data = [0u8; 20];
+                let length = self.read_response(interface, &mut received_data)?;
+                match <::protocol1::instruction::ReadDataResponse<R> as ::protocol1::Status>::deserialize(&received_data[0..length]) {
+                    Ok(r) => Ok(r.data),
+                    Err(e) => Err(e),
+                }
+            }
         }
     };
 }
@@ -171,7 +185,7 @@ pub(crate) trait Status {
 
         let id = ServoID::new(data[2]);
         
-        let parameters_range = 4..(4 + Self::LENGTH as usize - 2);
+        let parameters_range = 5..(5 + Self::LENGTH as usize - 2);
         Ok( Self::deserialize_parameters(id, &data[parameters_range]) )
     }
 }

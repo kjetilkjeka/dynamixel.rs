@@ -15,7 +15,9 @@ impl<I: Interface> Servo<I> for MX28<I> {
         Ok(self.write_data(interface, control_table::GoalPosition::new(goal_position))?)
     }
     
-    fn get_position(&mut self, _interface: &mut I) -> Result<f32, ::Error> {
-        unimplemented!()
+    fn get_position(&mut self, interface: &mut I) -> Result<f32, ::Error> {
+        let pos_fixed = i32::from(u16::from(self.read_data::<::dynamixel::mx28::control_table::PresentPosition>(interface)?));
+        let pos_rad = ((pos_fixed - 2048i32) as f32)/652.23f32;
+        Ok(pos_rad)
     }
 }

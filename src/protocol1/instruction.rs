@@ -79,6 +79,49 @@ impl Status for WriteDataResponse {
     }
 }
 
+pub(crate) struct ReadData<T: ReadRegister> {
+    pub id: PacketID,
+    reg: ::lib::marker::PhantomData<T>,
+}
+
+impl<T: ReadRegister> ReadData<T> {
+    pub(crate) fn new(id: PacketID) -> Self {
+        ReadData {
+            id: id,
+            reg: ::lib::marker::PhantomData{},
+        }
+    }
+}
+
+impl<T: ReadRegister> Instruction for ReadData<T>{
+    type Array = [u8; 8];
+    const LENGTH: u8 = 4;
+    const INSTRUCTION_VALUE: u8 = 0x02;
+
+    fn serialize(&self) -> [u8; 8] {
+        let mut array = [0xff, 0xff, u8::from(self.id), Self::LENGTH, Self::INSTRUCTION_VALUE, T::ADDRESS, T::SIZE, 0x00];
+        array[7] = u8::from(checksum::Checksum::calc(&array[2..7]));
+        array
+    }
+}
+
+
+pub(crate) struct ReadDataResponse<T: ReadRegister> {
+    pub id: ServoID,
+    pub data: T,
+}
+
+impl<T: ReadRegister> Status for ReadDataResponse<T> {
+    // Use max size (4) untill const generics land
+    const LENGTH: u8 = 2 + T::SIZE;
+    
+    fn deserialize_parameters(id: ServoID, parameters: &[u8]) -> Self {
+        assert_eq!(parameters.len(), T::SIZE as usize);
+        ReadDataResponse {id: id, data: T::deserialize(parameters)}
+    }
+}
+
+
 
 
 
@@ -106,5 +149,11 @@ mod tests {
     fn test_write() {
         assert_eq!(WriteData::new(PacketID::unicast(1), ::dynamixel::mx28::control_table::GoalPosition::new(0x123)).serialize(), [0xff, 0xff, 0x01, 0x05, 0x03, 30, 0x23, 0x01, 180, 0x00, 0x00]);
         assert_eq!(WriteData::new(PacketID::broadcast(), ::dynamixel::mx28::control_table::GoalPosition::new(0x123)).serialize(), [0xff, 0xff, 0xfe, 0x05, 0x03, 30, 0x23, 0x01, 183, 0x00, 0x00]);
+    }
+
+    #[test]
+    fn test_read() {
+        assert_eq!(ReadData::<::dynamixel::mx28::control_table::PresentPosition>::new(PacketID::unicast(1)).serialize(), [0xff, 0xff, 0x01, 0x04, 0x02, 36, 0x2, 210]);
+        assert_eq!(ReadData::<::dynamixel::mx28::control_table::PresentPosition>::new(PacketID::broadcast()).serialize(), [0xff, 0xff, 0xfe, 0x04, 0x02, 36, 0x2, 213]);
     }
 }
