@@ -38,13 +38,28 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
             };
 
             match <::protocol1::instruction::Pong as ::protocol1::Status>::deserialize(&received_data) {
-                Ok(pong) => servos.push(
-                    ServoInfo{
-                        baud_rate: *b,
-                        model_number: 0x001D,
-                        fw_version: 0,
-                        id: pong.id,
-                    }),
+                Ok(pong) => {
+                    interface.flush();
+                    let read_model = ::protocol1::instruction::ReadData::<GenericModelNumber>::new(::protocol1::PacketID::from(pong.id));
+                    interface.write(&::protocol1::Instruction::serialize(&read_model))?;
+                    let mut received_data_model = [0u8; 8];
+                    interface.read(&mut received_data_model)?;
+
+                    let model_number = match <::protocol1::instruction::ReadDataResponse<GenericModelNumber> as ::protocol1::Status>::deserialize(&received_data_model) {
+                        Ok(response) => response.data.value(),
+                        Err(e) => {
+                            warn!(target: "protocol1", "Found servo with baud: {} and id: {}. Could not resolve model number due to error: {:?}", u32::from(*b), u8::from(pong.id), e);
+                            continue;
+                        },
+                    };
+                                            
+                    servos.push(
+                        ServoInfo{
+                            baud_rate: *b,
+                            model_number: model_number,
+                            id: pong.id,
+                        });
+                },
                 Err(e) => {
                     warn!(target: "protocol1", "received error: {:?} when waiting for enumeration on baud: {}", e, u32::from(*b));
                     continue;
@@ -200,7 +215,6 @@ pub(crate) trait Status {
 pub struct ServoInfo {
     baud_rate: ::BaudRate,
     model_number: u16,
-    fw_version: u8,
     id: ServoID,
 }
 
@@ -345,5 +359,26 @@ impl From<PacketID> for u8 {
 impl From<ServoID> for u8 {
     fn from(id: ServoID) -> u8 {
         id.0
+    }
+}
+
+/// This is the model number register for all protocol 1 servos.
+struct GenericModelNumber(u16);
+
+impl GenericModelNumber {
+    fn value(&self) -> u16 {
+        self.0
+    }
+}
+                      
+impl Register for GenericModelNumber {
+    const SIZE: u8 =  2;
+    const ADDRESS: u8 = 0x00;
+}
+    
+impl ReadRegister for GenericModelNumber {
+    fn deserialize(bytes: &[u8]) -> Self {
+        assert_eq!(bytes.len(), 2);
+        GenericModelNumber(bytes[0] as u16 | (bytes[1] as u16) << 8)        
     }
 }
