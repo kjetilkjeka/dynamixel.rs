@@ -29,15 +29,13 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
         interface.write(&::protocol1::Instruction::serialize(&ping))?;
 
         loop {
-            let mut received_data = [0u8; 14];
-            // first read header
-            if let Err(e) = interface.read(&mut received_data[..4]) {
-                warn!(target: "protocol1", "received error: {:?} when waiting for enumeration on baud: {}", e, u32::from(*b));
-            }
+            let mut received_data = [0u8; 6];
 
-            // then read rest of message depending on header length
-            let length = received_data[3] as usize;
-            interface.read(&mut received_data[4..4+length])?;
+            match interface.read(&mut received_data) {
+                Ok(_) => (),
+                Err(CommunicationError::TimedOut) => break,
+                Err(e) => return Err(e),
+            };
 
             match <::protocol1::instruction::Pong as ::protocol1::Status>::deserialize(&received_data) {
                 Ok(pong) => servos.push(
@@ -46,12 +44,10 @@ pub fn enumerate<I: ::Interface>(interface: &mut I) -> Result<Vec<ServoInfo>, Co
                         model_number: 0x001D,
                         fw_version: 0,
                         id: pong.id,
-                    }
-                ),
-                Err(Error::Communication(CommunicationError::TimedOut)) => break,
+                    }),
                 Err(e) => {
                     warn!(target: "protocol1", "received error: {:?} when waiting for enumeration on baud: {}", e, u32::from(*b));
-                    break;
+                    continue;
                 },
             };
         }   
