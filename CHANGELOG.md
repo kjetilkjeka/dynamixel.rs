@@ -8,4 +8,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 ### Changed
  - Updated serialport version to 2.1, this cause timeouts to return correct Error.
+ - Fixed a bug where pinging protocol 1 servos would always timeout.
 ### Removed

@@ -105,7 +105,7 @@ macro_rules! protocol1_servo {
 
                 let ping = ::protocol1::instruction::Ping::new(::protocol1::PacketID::from(self.id));
                 interface.write(&::protocol1::Instruction::serialize(&ping))?;
-                let mut received_data = [0u8; 14];
+                let mut received_data = [0u8; 6];
                 self.read_response(interface, &mut received_data)?;
                 <::protocol1::instruction::Pong as ::protocol1::Status>::deserialize(&received_data)?;
                 Ok(())
