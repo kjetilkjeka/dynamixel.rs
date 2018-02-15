@@ -1,7 +1,7 @@
 [package]
 name = "dynamixel"
 description = "A (soon to be) full featured dynamixel servo library in rust"
-version = "0.1.0"
+version = "0.1.1"
 
 authors = ["Kjetil Kjeka <kjetilkjeka@gmail.com>"]
 
@@ -31,4 +31,4 @@ name = "serialport"
 required-features = ["std", "serialport"]
 
 [badges]
-travis-ci = { repository = "Kjetilkjeka/dynamixel.rs", branch = "master" }
+travis-ci = { repository = "kjetilkjeka/dynamixel.rs", branch = "master" }
